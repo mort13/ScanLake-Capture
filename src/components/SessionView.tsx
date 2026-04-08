@@ -1,0 +1,71 @@
+import { useEffect } from 'react'
+import { useSession } from '../store/SessionStore'
+import { ScanForm } from './ScanForm'
+import { IndexedDBCache } from '../store/IndexedDBCache'
+import type { Session } from '../types'
+
+interface Props {
+  sessionId: string
+  onBack: () => void
+}
+
+export function SessionView({ sessionId, onBack }: Props) {
+  const { state, openSession, closeActiveView } = useSession()
+
+  useEffect(() => {
+    openSession(sessionId)
+    return () => closeActiveView()
+  }, [sessionId, openSession, closeActiveView])
+
+  const session = state.sessions.find(s => s.sessionId === sessionId)
+  if (!session) return <div>Session not found</div>
+
+  async function handleSessionUpdated(updated: Session) {
+    await IndexedDBCache.saveSession(updated)
+  }
+
+  return (
+    <div className="session-view">
+      <div className="session-view-header">
+        <button onClick={onBack} className="btn-back">&larr; Back</button>
+        <h2>{session.system} / {session.gravityWell}</h2>
+        <span className={`session-status status-${session.status}`}>{session.status}</span>
+        <span>{session.scanCount} scans ({session.pendingScans} pending)</span>
+      </div>
+
+      {session.status === 'active' ? (
+        <ScanForm session={session} onSessionUpdated={handleSessionUpdated} />
+      ) : (
+        <p>This session is {session.status}. No more scans can be added.</p>
+      )}
+
+      {state.scans.length > 0 && (
+        <div className="scan-list">
+          <h3>Scans in this session ({state.scans.length} in cache)</h3>
+          <table className="scan-table">
+            <thead>
+              <tr>
+                <th>Time</th>
+                <th>Deposit</th>
+                <th>Mass</th>
+                <th>Vol</th>
+                <th>Cluster</th>
+              </tr>
+            </thead>
+            <tbody>
+              {state.scans.map(scan => (
+                <tr key={scan.captureId}>
+                  <td>{new Date(scan.timestamp).toLocaleTimeString()}</td>
+                  <td>{scan.deposit}</td>
+                  <td>{scan.mass}</td>
+                  <td>{scan.volume}</td>
+                  <td title={scan.clusterId}>{scan.clusterId.slice(0, 8)}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
+    </div>
+  )
+}
