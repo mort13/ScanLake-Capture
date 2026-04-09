@@ -64,12 +64,6 @@ export function UserSettings({ open, onClose }: Props) {
               onChange={e => setProfile(p => ({ ...p, org: e.target.value }))}
               placeholder="Your organization" />
           </label>
-          <label>
-            Email (for ID recovery)
-            <input type="email" value={profile.email}
-              onChange={e => setProfile(p => ({ ...p, email: e.target.value }))}
-              placeholder="Optional" />
-          </label>
         </div>
 
         <div className="settings-section">
