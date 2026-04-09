@@ -1,6 +1,7 @@
-// TODO: Add Bearer token auth once ScanLake Store worker implements /api/session
+import { getSessionToken, clearToken } from './AuthService'
+
 const STORE_API_BASE = import.meta.env.VITE_STORE_API_BASE ?? ''
-const UPLOAD_URL = STORE_API_BASE ? `${STORE_API_BASE}/api/upload` : ''
+const UPLOAD_URL = `${STORE_API_BASE}/api/upload`
 
 export interface UploadPayload {
   userId: string
@@ -12,11 +13,6 @@ export interface UploadPayload {
 }
 
 export async function uploadBatch(payload: UploadPayload): Promise<boolean> {
-  if (!UPLOAD_URL) {
-    console.info('VITE_STORE_API_BASE not set — skipping upload, data flushed locally only.')
-    return true
-  }
-
   const formData = new FormData()
   formData.append('userId', payload.userId)
   formData.append('sessionId', payload.sessionId)
@@ -34,15 +30,22 @@ export async function uploadBatch(payload: UploadPayload): Promise<boolean> {
   )
 
   try {
-    const res = await fetch(UPLOAD_URL, { method: 'POST', body: formData })
+    const token = await getSessionToken(payload.userId, payload.sessionId)
+    const res = await fetch(UPLOAD_URL, {
+      method: 'POST',
+      headers: { Authorization: `Bearer ${token}` },
+      body: formData,
+    })
     if (res.ok) {
       console.log(`Batch ${payload.batchNumber} uploaded successfully`)
       return true
     }
-    console.warn(`Upload failed: HTTP ${res.status}`)
+    if (res.status === 401) {
+      clearToken()
+    }
   } catch (err) {
-    console.warn(`Upload to ${UPLOAD_URL} failed. Data flushed locally.`, err)
+    console.warn(`Upload to ${UPLOAD_URL} failed. Data still flushed locally.`, err)
   }
-  // Return true so local state advances — parquet is already generated
+  // Return true anyway so local state progresses - data is already exported to parquet
   return true
 }
