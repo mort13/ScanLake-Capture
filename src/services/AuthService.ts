@@ -1,4 +1,4 @@
-const STORE_API_BASE = import.meta.env.VITE_STORE_API_BASE ?? ''
+const STORE_API_BASE = 'https://scanlake-store.mo-55d.workers.dev'
 
 let cachedToken: string | null = null
 let tokenExpiresAt = 0
