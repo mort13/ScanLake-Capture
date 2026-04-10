@@ -92,6 +92,7 @@ interface SessionContextValue {
   addScan: (scan: Scan, materials: Material[]) => Promise<void>
   closeSession: (sessionId: string) => Promise<void>
   archiveSession: (sessionId: string) => Promise<void>
+  deleteSessionWithoutUploading: (sessionId: string) => Promise<void>
   getClusterDeposit: (clusterId: string) => string | undefined
 }
 
@@ -232,6 +233,18 @@ export function SessionProvider({ children }: { children: ReactNode }) {
     dispatch({ type: 'SESSION_REMOVED', sessionId })
   }, [])
 
+  const deleteSessionWithoutUploading = useCallback(async (sessionId: string) => {
+    // Delete all scans for this session
+    const scans = await IndexedDBCache.getScansForSession(sessionId)
+    const captureIds = scans.map(s => s.captureId)
+    if (captureIds.length > 0) {
+      await IndexedDBCache.deleteScans(captureIds)
+    }
+    // Delete the session itself
+    await IndexedDBCache.deleteSession(sessionId)
+    dispatch({ type: 'SESSION_REMOVED', sessionId })
+  }, [])
+
   const getClusterDeposit = useCallback((clusterId: string) => {
     return state.clusterDeposits[clusterId]
   }, [state.clusterDeposits])
@@ -245,9 +258,12 @@ export function SessionProvider({ children }: { children: ReactNode }) {
       addScan,
       closeSession,
       archiveSession,
+      deleteSessionWithoutUploading,
       getClusterDeposit,
     }}>
       {children}
+    </SessionContext.Provider>
+  )
     </SessionContext.Provider>
   )
 }

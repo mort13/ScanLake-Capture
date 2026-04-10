@@ -25,16 +25,26 @@ export async function getWordMeta(): Promise<ModelMeta> {
 
 export async function getDigitSession(): Promise<ort.InferenceSession> {
   if (digitSession) return digitSession
-  digitSession = await ort.InferenceSession.create('/models/digit_cnn.onnx', {
+  const [modelBuffer, dataBuffer] = await Promise.all([
+    fetch('/models/digit_cnn.onnx').then(r => r.arrayBuffer()),
+    fetch('/models/digit_cnn.onnx.data').then(r => r.arrayBuffer()),
+  ])
+  digitSession = await ort.InferenceSession.create(modelBuffer, {
     executionProviders: ['wasm'],
+    externalData: [{ path: 'digit_cnn.onnx.data', data: dataBuffer }],
   })
   return digitSession
 }
 
 export async function getWordSession(): Promise<ort.InferenceSession> {
   if (wordSession) return wordSession
-  wordSession = await ort.InferenceSession.create('/models/word_cnn.onnx', {
+  const [modelBuffer, dataBuffer] = await Promise.all([
+    fetch('/models/word_cnn.onnx').then(r => r.arrayBuffer()),
+    fetch('/models/word_cnn.onnx.data').then(r => r.arrayBuffer()),
+  ])
+  wordSession = await ort.InferenceSession.create(modelBuffer, {
     executionProviders: ['wasm'],
+    externalData: [{ path: 'word_cnn.onnx.data', data: dataBuffer }],
   })
   return wordSession
 }

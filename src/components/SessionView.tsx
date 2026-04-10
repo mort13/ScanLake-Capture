@@ -1,4 +1,4 @@
-import { useEffect } from 'react'
+import { useEffect, useState } from 'react'
 import { useSession } from '../store/SessionStore'
 import { ScanForm } from './ScanForm'
 import { IndexedDBCache } from '../store/IndexedDBCache'
@@ -10,7 +10,8 @@ interface Props {
 }
 
 export function SessionView({ sessionId, onBack }: Props) {
-  const { state, openSession, closeActiveView } = useSession()
+  const { state, openSession, closeActiveView, deleteSessionWithoutUploading } = useSession()
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false)
 
   useEffect(() => {
     openSession(sessionId)
@@ -24,6 +25,12 @@ export function SessionView({ sessionId, onBack }: Props) {
     await IndexedDBCache.saveSession(updated)
   }
 
+  async function handleDelete() {
+    await deleteSessionWithoutUploading(sessionId)
+    setShowDeleteConfirm(false)
+    onBack()
+  }
+
   return (
     <div className="session-view">
       <div className="session-view-header">
@@ -31,7 +38,18 @@ export function SessionView({ sessionId, onBack }: Props) {
         <h2>{session.system} / {session.gravityWell}</h2>
         <span className={`session-status status-${session.status}`}>{session.status}</span>
         <span>{session.scanCount} scans ({session.pendingScans} pending)</span>
+        {session.status === 'active' && (
+          <button onClick={() => setShowDeleteConfirm(true)} className="btn-sm btn-danger">Delete Without Upload</button>
+        )}
       </div>
+
+      {showDeleteConfirm && (
+        <div className="confirmation-dialog">
+          <p>Delete this session and all pending scans without uploading?</p>
+          <button onClick={handleDelete} className="btn-sm btn-danger">Confirm Delete</button>
+          <button onClick={() => setShowDeleteConfirm(false)} className="btn-sm btn-cancel">Cancel</button>
+        </div>
+      )}
 
       {session.status === 'active' ? (
         <ScanForm session={session} onSessionUpdated={handleSessionUpdated} />

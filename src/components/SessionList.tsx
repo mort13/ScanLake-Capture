@@ -12,10 +12,11 @@ interface Props {
 }
 
 export function SessionList({ onOpenSession }: Props) {
-  const { state, createSession, closeSession, archiveSession } = useSession()
+  const { state, createSession, closeSession, archiveSession, deleteSessionWithoutUploading } = useSession()
   const [showCreate, setShowCreate] = useState(false)
   const [system, setSystem] = useState('')
   const [gravityWell, setGravityWell] = useState('')
+  const [deleteConfirm, setDeleteConfirm] = useState<string | null>(null)
 
   async function handleCreate() {
     if (!system || !gravityWell) return
@@ -39,6 +40,11 @@ export function SessionList({ onOpenSession }: Props) {
     const compsBuffer = buildCompositionsParquet(scans, allMats)
     downloadBlob(scansBuffer, `${profile.userId}_scans_${sessionId}.parquet`)
     downloadBlob(compsBuffer, `${profile.userId}_compositions_${sessionId}.parquet`)
+  }
+
+  async function handleDelete(sessionId: string) {
+    await deleteSessionWithoutUploading(sessionId)
+    setDeleteConfirm(null)
   }
 
   const gwOptions = GRAVITY_WELLS[system] || []
@@ -76,6 +82,7 @@ export function SessionList({ onOpenSession }: Props) {
               <>
                 <button onClick={() => onOpenSession(session.sessionId)} className="btn-sm">Open</button>
                 <button onClick={() => closeSession(session.sessionId)} className="btn-sm btn-warning">Close & Upload</button>
+                <button onClick={() => setDeleteConfirm(session.sessionId)} className="btn-sm btn-danger">Delete</button>
               </>
             )}
             {session.status !== 'active' && (
@@ -85,6 +92,14 @@ export function SessionList({ onOpenSession }: Props) {
               <button onClick={() => archiveSession(session.sessionId)} className="btn-sm btn-danger">Archive</button>
             )}
           </div>
+
+          {deleteConfirm === session.sessionId && (
+            <div className="confirmation-dialog">
+              <p>Delete this session and all pending scans without uploading?</p>
+              <button onClick={() => handleDelete(session.sessionId)} className="btn-sm btn-danger">Confirm Delete</button>
+              <button onClick={() => setDeleteConfirm(null)} className="btn-sm btn-cancel">Cancel</button>
+            </div>
+          )}
         </div>
       ))}
     </div>
