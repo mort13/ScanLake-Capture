@@ -5,10 +5,12 @@ import { MaterialRow } from './MaterialRow'
 import { ValidationBadge } from './ValidationBadge'
 import { OcrStatus } from './OcrStatus'
 import { CaptureOverlay } from './CaptureOverlay'
+import { CapturePreview } from './CapturePreview'
 import { DEPOSIT_TYPES } from '../data/deposits'
 import { useSession } from '../store/SessionStore'
 import { IndexedDBCache } from '../store/IndexedDBCache'
 import { runPipeline } from '../ocr/OcrPipeline'
+import { runPreviewPipeline, type PipelinePreviewResult } from '../ocr/PreviewPipeline'
 import { stopStream } from '../ocr/ScreenCapture'
 import type { CaptureRegion, OcrStatus as OcrStatusType } from '../ocr/types'
 import type { Session, Scan, Material, MaterialFormRow, ScanFormData, ValidationResult } from '../types'
@@ -94,6 +96,8 @@ export function ScanForm({ session, onSessionUpdated }: Props) {
   const [ocrConfidence, setOcrConfidence] = useState<number | undefined>(undefined)
   const [captureRegion, setCaptureRegion] = useState<CaptureRegion | null>(null)
   const [showOverlay, setShowOverlay] = useState(false)
+  const [previewResult, setPreviewResult] = useState<PipelinePreviewResult | null>(null)
+  const [previewLoading, setPreviewLoading] = useState(false)
   const saveRef = useRef<() => Promise<void>>(null)
 
   // Load stored capture region on mount
@@ -286,6 +290,25 @@ export function ScanForm({ session, onSessionUpdated }: Props) {
     return () => window.removeEventListener('keydown', handleKeyDown)
   }, [handleOcrCapture, newCluster])
 
+  const handlePreviewCapture = useCallback(async () => {
+    if (!captureRegion) { setShowOverlay(true); return }
+    if (previewLoading) return
+    setPreviewLoading(true)
+    setOcrMessage('Generating preview...')
+    setOcrStatus('processing')
+    try {
+      const result = await runPreviewPipeline(captureRegion, (msg) => setOcrMessage(msg))
+      setPreviewResult(result)
+      setOcrStatus('idle')
+      setOcrMessage('Press F9 to capture')
+    } catch (e) {
+      setOcrStatus('error')
+      setOcrMessage(e instanceof Error ? e.message : 'Preview failed')
+    } finally {
+      setPreviewLoading(false)
+    }
+  }, [captureRegion, previewLoading])
+
   function handleRegionSelected(region: CaptureRegion) {
     setCaptureRegion(region)
     IndexedDBCache.saveCaptureRegion(region)
@@ -306,11 +329,19 @@ export function ScanForm({ session, onSessionUpdated }: Props) {
         />
       )}
 
+      {previewResult && (
+        <CapturePreview result={previewResult} onClose={() => setPreviewResult(null)} />
+      )}
+
       <div className="ocr-controls">
         <OcrStatus status={ocrStatus} message={ocrMessage} confidence={ocrConfidence} />
         <div className="ocr-buttons">
           <button type="button" onClick={() => setShowOverlay(true)} className="btn-sm">
             {captureRegion ? 'Change Region' : 'Select Region'}
+          </button>
+          <button type="button" onClick={handlePreviewCapture} className="btn-sm"
+            disabled={!captureRegion || previewLoading || ocrStatus === 'capturing' || ocrStatus === 'processing'}>
+            {previewLoading ? 'Loading...' : 'Preview'}
           </button>
           <button type="button" onClick={handleOcrCapture} className="btn-primary btn-sm"
             disabled={!captureRegion || ocrStatus === 'capturing' || ocrStatus === 'processing'}>

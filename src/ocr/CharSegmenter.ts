@@ -17,6 +17,51 @@ export function segmentCharacters(
   return [roiImage]
 }
 
+/**
+ * Return the x-pixel positions of segmentation cut lines within a ROI image.
+ * Used for visualization only.
+ */
+export function getSegmentBoundaries(image: ImageData, roi: RoiConfig): number[] {
+  if (roi.seg_mode === 'fixed_width') {
+    if (roi.char_count <= 0) return []
+    const charW = Math.floor(image.width / roi.char_count)
+    return Array.from({ length: roi.char_count - 1 }, (_, i) => (i + 1) * charW)
+  } else if (roi.seg_mode === 'projection') {
+    return projectionBoundaries(image)
+  }
+  return []
+}
+
+function projectionBoundaries(image: ImageData): number[] {
+  const w = image.width
+  const h = image.height
+  const projection = new Float32Array(w)
+  for (let x = 0; x < w; x++) {
+    let sum = 0
+    for (let y = 0; y < h; y++) {
+      const off = (y * w + x) * 4
+      const gray = 0.299 * image.data[off] + 0.587 * image.data[off + 1] + 0.114 * image.data[off + 2]
+      if (gray < 128) sum++
+    }
+    projection[x] = sum
+  }
+  const threshold = h * 0.05
+  const boundaries: number[] = []
+  let inChar = false
+  let first = true
+  for (let x = 0; x <= w; x++) {
+    const val = x < w ? projection[x] : 0
+    if (!inChar && val > threshold) {
+      inChar = true
+      if (!first) boundaries.push(x)
+      first = false
+    } else if (inChar && val <= threshold) {
+      inChar = false
+    }
+  }
+  return boundaries
+}
+
 /** Fixed-width: divide ROI into equal columns */
 function fixedWidthSegment(image: ImageData, charCount: number): ImageData[] {
   if (charCount <= 0) return [image]
