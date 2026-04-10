@@ -330,3 +330,76 @@ label {
   color: var(--text-dim);
 }
 .setup-prompt p { margin-bottom: 16px; }
+
+/* OCR Controls */
+.ocr-controls {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 12px;
+  padding: 8px 12px;
+  background: var(--surface-2);
+  border-radius: var(--radius);
+  gap: 12px;
+}
+.ocr-buttons { display: flex; gap: 6px; flex-shrink: 0; }
+
+/* OCR Status */
+.ocr-status {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 0.8rem;
+  padding: 2px 0;
+  min-width: 0;
+}
+.ocr-status-icon { font-size: 1rem; flex-shrink: 0; }
+.ocr-status-message {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.ocr-status-confidence { color: var(--success); flex-shrink: 0; }
+.ocr-status-idle { color: var(--text-dim); }
+.ocr-status-capturing { color: var(--primary); }
+.ocr-status-processing { color: var(--warning); }
+.ocr-status-success { color: var(--success); }
+.ocr-status-error { color: var(--danger); }
+
+/* Capture Overlay */
+.capture-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 200;
+  background: #000;
+  display: flex;
+  flex-direction: column;
+}
+.capture-overlay-toolbar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 12px 20px;
+  background: var(--surface);
+  color: var(--text);
+  font-size: 0.85rem;
+  z-index: 201;
+  gap: 16px;
+}
+.capture-overlay-actions { display: flex; gap: 8px; flex-shrink: 0; }
+.capture-overlay-canvas {
+  flex: 1;
+  width: 100%;
+  object-fit: contain;
+  cursor: crosshair;
+}
+.capture-overlay-message {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  height: 100%;
+  color: var(--text);
+  gap: 12px;
+  font-size: 1rem;
+}

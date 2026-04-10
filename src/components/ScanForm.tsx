@@ -1,10 +1,16 @@
-import { useState, useMemo } from 'react'
+import { useState, useMemo, useEffect, useCallback, useRef } from 'react'
 import { v4 as uuidv4 } from 'uuid'
 import { Autocomplete } from './Autocomplete'
 import { MaterialRow } from './MaterialRow'
 import { ValidationBadge } from './ValidationBadge'
+import { OcrStatus } from './OcrStatus'
+import { CaptureOverlay } from './CaptureOverlay'
 import { DEPOSIT_TYPES } from '../data/deposits'
 import { useSession } from '../store/SessionStore'
+import { IndexedDBCache } from '../store/IndexedDBCache'
+import { runPipeline } from '../ocr/OcrPipeline'
+import { stopStream } from '../ocr/ScreenCapture'
+import type { CaptureRegion, OcrStatus as OcrStatusType } from '../ocr/types'
 import type { Session, Scan, Material, MaterialFormRow, ScanFormData, ValidationResult } from '../types'
 
 interface Props {
@@ -82,6 +88,22 @@ export function ScanForm({ session, onSessionUpdated }: Props) {
 
   const [showErrors, setShowErrors] = useState(false)
 
+  // OCR state
+  const [ocrStatus, setOcrStatus] = useState<OcrStatusType>('idle')
+  const [ocrMessage, setOcrMessage] = useState('Press F9 to capture')
+  const [ocrConfidence, setOcrConfidence] = useState<number | undefined>(undefined)
+  const [captureRegion, setCaptureRegion] = useState<CaptureRegion | null>(null)
+  const [showOverlay, setShowOverlay] = useState(false)
+  const saveRef = useRef<() => Promise<void>>(null)
+
+  // Load stored capture region on mount
+  useEffect(() => {
+    IndexedDBCache.getCaptureRegion().then(r => {
+      if (r) setCaptureRegion(r)
+    })
+    return () => { stopStream() }
+  }, [])
+
   // Pre-fill deposit from cluster
   const clusterDeposit = getClusterDeposit(clusterId)
 
@@ -128,7 +150,7 @@ export function ScanForm({ session, onSessionUpdated }: Props) {
     setForm(f => ({ ...f, materials: [...f.materials, { ...EMPTY_MATERIAL }] }))
   }
 
-  function newCluster() {
+  const newCluster = useCallback(() => {
     const id = uuidv4()
     setClusterHistory(h => [...h, id])
     setClusterId(id)
@@ -137,7 +159,7 @@ export function ScanForm({ session, onSessionUpdated }: Props) {
     // Update session cluster history
     const updated = { ...session, clusterHistory: [...clusterHistory, id] }
     onSessionUpdated(updated)
-  }
+  }, [session, clusterHistory, onSessionUpdated])
 
   function prevCluster() {
     const idx = clusterHistory.indexOf(clusterId)
@@ -210,11 +232,93 @@ export function ScanForm({ session, onSessionUpdated }: Props) {
     setShowErrors(false)
   }
 
+  // Keep saveRef current for F10 handler
+  saveRef.current = handleSave
+
+  // OCR capture handler
+  const handleOcrCapture = useCallback(async () => {
+    if (!captureRegion) {
+      setShowOverlay(true)
+      return
+    }
+    if (ocrStatus === 'capturing' || ocrStatus === 'processing') return
+
+    try {
+      setOcrStatus('capturing')
+      setOcrMessage('Capturing...')
+      setOcrConfidence(undefined)
+
+      const result = await runPipeline(captureRegion, (stage) => {
+        setOcrStatus('processing')
+        setOcrMessage(stage)
+      })
+
+      setForm(result.formData)
+      const avgConf = result.confidences.size > 0
+        ? [...result.confidences.values()].reduce((a, b) => a + b, 0) / result.confidences.size
+        : 0
+      setOcrConfidence(avgConf)
+      setOcrStatus('success')
+      setOcrMessage('Scan captured successfully')
+      setShowErrors(false)
+    } catch (e) {
+      setOcrStatus('error')
+      setOcrMessage(e instanceof Error ? e.message : 'OCR failed')
+      setOcrConfidence(undefined)
+    }
+  }, [captureRegion, ocrStatus])
+
+  // Global key listeners: F9 = capture, F10 = save, F11 = new cluster
+  useEffect(() => {
+    function handleKeyDown(e: KeyboardEvent) {
+      if (e.key === 'F9') {
+        e.preventDefault()
+        handleOcrCapture()
+      } else if (e.key === 'F10') {
+        e.preventDefault()
+        saveRef.current?.()
+      } else if (e.key === 'F11') {
+        e.preventDefault()
+        newCluster()
+      }
+    }
+    window.addEventListener('keydown', handleKeyDown)
+    return () => window.removeEventListener('keydown', handleKeyDown)
+  }, [handleOcrCapture, newCluster])
+
+  function handleRegionSelected(region: CaptureRegion) {
+    setCaptureRegion(region)
+    IndexedDBCache.saveCaptureRegion(region)
+    setShowOverlay(false)
+    setOcrMessage('Region set. Press F9 to capture.')
+  }
+
   // Calculate material_volume preview
   const volume = parseFloat(form.volume) || 0
 
   return (
     <div className="scan-form">
+      {showOverlay && (
+        <CaptureOverlay
+          onRegionSelected={handleRegionSelected}
+          onCancel={() => setShowOverlay(false)}
+          existingRegion={captureRegion}
+        />
+      )}
+
+      <div className="ocr-controls">
+        <OcrStatus status={ocrStatus} message={ocrMessage} confidence={ocrConfidence} />
+        <div className="ocr-buttons">
+          <button type="button" onClick={() => setShowOverlay(true)} className="btn-sm">
+            {captureRegion ? 'Change Region' : 'Select Region'}
+          </button>
+          <button type="button" onClick={handleOcrCapture} className="btn-primary btn-sm"
+            disabled={!captureRegion || ocrStatus === 'capturing' || ocrStatus === 'processing'}>
+            Capture (F9)
+          </button>
+        </div>
+      </div>
+
       <div className="cluster-control">
         <button type="button" onClick={prevCluster} disabled={clusterHistory.indexOf(clusterId) === 0}>
           &larr; Prev
@@ -225,7 +329,7 @@ export function ScanForm({ session, onSessionUpdated }: Props) {
         <button type="button" onClick={nextCluster} disabled={clusterHistory.indexOf(clusterId) === clusterHistory.length - 1}>
           Next &rarr;
         </button>
-        <button type="button" onClick={newCluster} className="btn-new-cluster">+ New Cluster</button>
+        <button type="button" onClick={newCluster} className="btn-new-cluster">+ New Cluster (F11)</button>
       </div>
 
       <div className="form-grid">
@@ -302,7 +406,7 @@ export function ScanForm({ session, onSessionUpdated }: Props) {
       )}
 
       <button type="button" onClick={handleSave} className="btn-save">
-        Save Scan
+        Save Scan (F10)
       </button>
       <span className="scan-counter">
         Scans in session: {(state.sessions.find(s => s.sessionId === session.sessionId)?.scanCount ?? 0)}

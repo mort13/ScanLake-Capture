@@ -1,13 +1,15 @@
 import { openDB, type IDBPDatabase } from 'idb'
 import type { Session, Scan, Material } from '../types'
+import type { CaptureRegion } from '../ocr/types'
 
 const DB_NAME = 'scanlake'
-const DB_VERSION = 1
+const DB_VERSION = 2
 
 interface ScanLakeDB {
   sessions: { key: string; value: Session }
   scans: { key: string; value: Scan; indexes: { sessionId: string } }
   compositions: { key: string; value: Material; indexes: { captureId: string } }
+  ocrSettings: { key: string; value: { key: string; data: unknown } }
 }
 
 let dbPromise: Promise<IDBPDatabase<ScanLakeDB>> | null = null
@@ -15,14 +17,19 @@ let dbPromise: Promise<IDBPDatabase<ScanLakeDB>> | null = null
 function getDB() {
   if (!dbPromise) {
     dbPromise = openDB<ScanLakeDB>(DB_NAME, DB_VERSION, {
-      upgrade(db) {
-        db.createObjectStore('sessions', { keyPath: 'sessionId' })
-        const scanStore = db.createObjectStore('scans', { keyPath: 'captureId' })
-        scanStore.createIndex('sessionId', 'sessionId')
-        const compStore = db.createObjectStore('compositions', {
-          keyPath: ['captureId', 'matIndex'],
-        })
-        compStore.createIndex('captureId', 'captureId')
+      upgrade(db, oldVersion) {
+        if (oldVersion < 1) {
+          db.createObjectStore('sessions', { keyPath: 'sessionId' })
+          const scanStore = db.createObjectStore('scans', { keyPath: 'captureId' })
+          scanStore.createIndex('sessionId', 'sessionId')
+          const compStore = db.createObjectStore('compositions', {
+            keyPath: ['captureId', 'matIndex'],
+          })
+          compStore.createIndex('captureId', 'captureId')
+        }
+        if (oldVersion < 2) {
+          db.createObjectStore('ocrSettings', { keyPath: 'key' })
+        }
       },
     })
   }
@@ -114,4 +121,18 @@ export const IndexedDBCache = {
   getMaterialsForScan,
   getMaterialsForScans,
   deleteScans,
+  saveCaptureRegion,
+  getCaptureRegion,
+}
+
+// OCR Settings
+async function saveCaptureRegion(region: CaptureRegion): Promise<void> {
+  const db = await getDB()
+  await db.put('ocrSettings', { key: 'captureRegion', data: region })
+}
+
+async function getCaptureRegion(): Promise<CaptureRegion | null> {
+  const db = await getDB()
+  const entry = await db.get('ocrSettings', 'captureRegion')
+  return (entry?.data as CaptureRegion) ?? null
 }
