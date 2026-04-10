@@ -264,8 +264,6 @@ export function SessionProvider({ children }: { children: ReactNode }) {
       {children}
     </SessionContext.Provider>
   )
-    </SessionContext.Provider>
-  )
 }
 
 export function useSession() {
