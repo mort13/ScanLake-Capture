@@ -65,8 +65,6 @@ export function mapResultsToForm(
 
   // Materials: extract from composition array in the schema
   const materials: MaterialFormRow[] = []
-  const compositionData = flat.get('composition')
-  // composition is encoded as a special marker; walk each material slot
   for (let i = 0; i < 5; i++) {
     // Look for composition[i].* entries in the flat map
     const materialKey = `composition[${i}].name`
@@ -127,11 +125,6 @@ export function mapResultsToForm(
     },
     confidences,
   }
-}
-
-/** Get text directly from roiResults map by ROI name */
-function getDirectRoi(results: Map<string, RoiResult>, roiName: string): string {
-  return results.get(roiName)?.text.trim() ?? ''
 }
 
 /**

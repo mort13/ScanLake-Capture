@@ -8,7 +8,6 @@ import {
   applyTransform,
   getScale,
   type AffineTransform,
-  type SubAnchorDetectionResult,
 } from './AnchorDetector'
 import { extractRoi } from './RoiExtractor'
 import { getSegmentBoundaries } from './CharSegmenter'
@@ -161,6 +160,7 @@ export async function runPreviewPipeline(
     },
     anchorMatches,
     subAnchorMatches,
+    subAnchorSearchRegions,
     transform,
     transformError,
     roiPreviews,

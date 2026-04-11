@@ -132,7 +132,7 @@ function FrameCanvas({ result }: { result: PipelinePreviewResult }) {
     }
 
     // Sub-anchor search regions (light blue rectangles)
-    for (const [name, region] of result.subAnchorSearchRegions) {
+    for (const [, region] of result.subAnchorSearchRegions) {
       ctx.strokeStyle = 'rgba(79,143,247,0.5)'
       ctx.lineWidth = 1
       ctx.strokeRect(region.x, region.y, region.width, region.height)
