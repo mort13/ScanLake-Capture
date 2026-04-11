@@ -834,7 +834,7 @@
         },
         {
           "name": "perc2",
-          "template_path": "percentage2.jpg",
+          "template_path": "perc2.png",
           "match_threshold": 0.7,
           "ref_x": 37.0,
           "ref_y": 250.0,

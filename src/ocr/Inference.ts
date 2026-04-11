@@ -68,6 +68,18 @@ async function recognizeChars(
   let totalText = ''
   let minConfidence = 1.0
 
+/** Recognize individual characters using digit_cnn model */
+async function recognizeChars(
+  roiImage: ImageData,
+  roi: RoiConfig,
+): Promise<RoiResult> {
+  const session = await getDigitSession()
+  const meta = await getDigitMeta()
+  const segments = segmentCharacters(roiImage, roi)
+
+  let totalText = ''
+  let minConfidence = 1.0
+
   for (const seg of segments) {
     const input = prepareCharInput(seg)
     // DigitCNN takes 28×28 input
