@@ -86,6 +86,8 @@ export interface RoiResult {
   roiName: string
   text: string
   confidence: number
+  /** Per-character/segment confidences for cnn mode (one entry per segment) */
+  segmentConfidences?: number[]
 }
 
 export interface AnchorMatch {

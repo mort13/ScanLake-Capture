@@ -577,3 +577,24 @@ label {
   color: var(--text-dim);
   flex-shrink: 0;
 }
+.roi-card-seg-confs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 2px;
+  padding: 2px 0 1px;
+}
+.roi-seg-conf {
+  font-size: 0.6rem;
+  font-family: monospace;
+  padding: 1px 3px;
+  border-radius: 3px;
+  line-height: 1.2;
+}
+.roi-seg-conf-ok {
+  background: rgba(80, 200, 120, 0.18);
+  color: #50c878;
+}
+.roi-seg-conf-low {
+  background: rgba(229, 80, 80, 0.18);
+  color: #e55050;
+}

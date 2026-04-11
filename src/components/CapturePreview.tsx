@@ -245,6 +245,23 @@ function RoiCard({ item }: { item: RoiPreviewData }) {
           <span className="roi-card-conf">{confPct}%</span>
         </div>
       )}
+      {item.segmentConfidences.length > 0 && (
+        <div className="roi-card-seg-confs">
+          {item.segmentConfidences.map((c, i) => {
+            const pct = Math.round(c * 100)
+            const ok = c >= 0.75
+            return (
+              <span
+                key={i}
+                className={`roi-seg-conf ${ok ? 'roi-seg-conf-ok' : 'roi-seg-conf-low'}`}
+                title={`Segment ${i + 1}: ${pct}%`}
+              >
+                {pct}
+              </span>
+            )
+          })}
+        </div>
+      )}
     </div>
   )
 }

@@ -49,9 +49,21 @@ async function recognizeWord(
   }
   const confidence = softmaxMax(data, 0, Math.min(classCount, numClasses))
 
+  // If the model predicted an "empty" class, the field is blank
+  const label = labels[bestIdx] ?? '?'
+  if (label.toLowerCase() === 'empty' || label.toLowerCase() === 'none') {
+    return { roiName: roi.name, text: '', confidence: 0 }
+  }
+
+  // Below confidence threshold → treat as unrecognized
+  const WORD_THRESHOLD = 0.75
+  if (confidence < WORD_THRESHOLD) {
+    return { roiName: roi.name, text: '', confidence }
+  }
+
   return {
     roiName: roi.name,
-    text: labels[bestIdx] ?? '?',
+    text: label,
     confidence,
   }
 }
@@ -65,8 +77,10 @@ async function recognizeChars(
   const meta = await getDigitMeta()
   const segments = segmentCharacters(roiImage, roi)
 
+  const CHAR_THRESHOLD = 0.75
   let totalText = ''
-  let minConfidence = 1.0
+  const segmentConfidences: number[] = []
+  const contributingConfs: number[] = []
 
   for (const seg of segments) {
     const input = prepareCharInput(seg)
@@ -79,14 +93,24 @@ async function recognizeChars(
 
     // Get best prediction (possibly filtered by allowed_chars)
     const { char, confidence } = bestPrediction(probs, meta.charClasses, roi.allowed_chars)
-    totalText += char
-    if (confidence < minConfidence) minConfidence = confidence
+    segmentConfidences.push(confidence)
+
+    if (confidence >= CHAR_THRESHOLD) {
+      totalText += char
+      contributingConfs.push(confidence)
+    }
+    // Below threshold: skip this segment (likely empty space)
   }
+
+  const overallConfidence = contributingConfs.length > 0
+    ? contributingConfs.reduce((a, b) => a + b, 0) / contributingConfs.length
+    : 0
 
   return {
     roiName: roi.name,
     text: totalText,
-    confidence: minConfidence,
+    confidence: overallConfidence,
+    segmentConfidences,
   }
 }
 

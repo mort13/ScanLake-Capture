@@ -25,6 +25,8 @@ export interface RoiPreviewData {
   /** CNN-recognized text (null if ROI out of bounds) */
   recognizedText: string | null
   recognitionConfidence: number
+  /** Per-segment confidences for cnn mode */
+  segmentConfidences: number[]
 }
 
 export interface PreviewProfileStatus {
@@ -120,17 +122,19 @@ export async function runPreviewPipeline(
 
         let recognizedText: string | null = null
         let recognitionConfidence = 0
+        let segmentConfidences: number[] = []
         if (imageData) {
           try {
             const result = await recognizeRoi(imageData, roi)
             recognizedText = result.text
             recognitionConfidence = result.confidence
+            segmentConfidences = result.segmentConfidences ?? []
           } catch {
             recognizedText = '(error)'
           }
         }
 
-        roiPreviews.push({ roi, imageData, pixelX, pixelY, pixelW, pixelH, segBoundaries, recognizedText, recognitionConfidence })
+        roiPreviews.push({ roi, imageData, pixelX, pixelY, pixelW, pixelH, segBoundaries, recognizedText, recognitionConfidence, segmentConfidences })
       }
     } catch (e) {
       transformError = e instanceof Error ? e.message : 'Transform failed'

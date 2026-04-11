@@ -810,14 +810,26 @@
           "template_path": "resistance_anchor.png",
           "match_threshold": 0.7,
           "ref_x": 133.0,
-          "ref_y": 100.0
+          "ref_y": 100.0,
+          "search_region": {
+            "x": 126,
+            "y": 102,
+            "width": 30,
+            "height": 20
+          }
         },
         {
           "name": "instability_anchor",
           "template_path": "instability_anchor.png",
           "match_threshold": 0.7,
           "ref_x": 146.0,
-          "ref_y": 123.0
+          "ref_y": 123.0,
+          "search_region": {
+            "x": 130,
+            "y": 124,
+            "width": 25,
+            "height": 20
+          }
         },
         {
           "name": "perc1",
@@ -834,7 +846,7 @@
         },
         {
           "name": "perc2",
-          "template_path": "perc2.png",
+          "template_path": "percentage2.jpg",
           "match_threshold": 0.7,
           "ref_x": 37.0,
           "ref_y": 250.0,
