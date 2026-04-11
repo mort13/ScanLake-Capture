@@ -90,8 +90,14 @@ export interface RoiResult {
 
 export interface AnchorMatch {
   name: string
+  /** TOP-LEFT X in image coordinates (OpenCV convention, matches spec) */
   x: number
+  /** TOP-LEFT Y in image coordinates */
   y: number
+  /** Template width — used by visualizers to compute center */
+  w: number
+  /** Template height */
+  h: number
   confidence: number
 }
 

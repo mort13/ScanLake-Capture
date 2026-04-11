@@ -120,9 +120,11 @@ export function detectAnchors(
     if (result.score >= anchor.match_threshold) {
       matches.push({
         name: anchor.name,
-        // Center of the matched region
-        x: result.x + tpl.width / 2,
-        y: result.y + tpl.height / 2,
+        // TOP-LEFT corner of matched region (spec: all coords are top-left)
+        x: result.x,
+        y: result.y,
+        w: tpl.width,
+        h: tpl.height,
         confidence: result.score,
       })
     }
@@ -162,8 +164,11 @@ export function detectSubAnchors(
     if (result.score >= sa.match_threshold) {
       results.set(sa.name, {
         name: sa.name,
-        x: result.x + tpl.width / 2,
-        y: result.y + tpl.height / 2,
+        // TOP-LEFT corner of matched region (spec: all coords are top-left)
+        x: result.x,
+        y: result.y,
+        w: tpl.width,
+        h: tpl.height,
         confidence: result.score,
       })
     }

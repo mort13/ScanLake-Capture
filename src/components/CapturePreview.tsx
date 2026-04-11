@@ -152,25 +152,27 @@ function drawCrosshair(
   imgWidth: number,
 ) {
   const r = Math.max(6, Math.round(imgWidth / 192))
-  const { x, y } = match
+  // match.x/y are TOP-LEFT; draw crosshair at template center
+  const cx = match.x + match.w / 2
+  const cy = match.y + match.h / 2
   ctx.strokeStyle = color
   ctx.fillStyle = color
   ctx.lineWidth = 1.5
 
   ctx.beginPath()
-  ctx.arc(x, y, r, 0, Math.PI * 2)
+  ctx.arc(cx, cy, r, 0, Math.PI * 2)
   ctx.stroke()
 
   ctx.beginPath()
-  ctx.moveTo(x - r * 2.5, y)
-  ctx.lineTo(x + r * 2.5, y)
-  ctx.moveTo(x, y - r * 2.5)
-  ctx.lineTo(x, y + r * 2.5)
+  ctx.moveTo(cx - r * 2.5, cy)
+  ctx.lineTo(cx + r * 2.5, cy)
+  ctx.moveTo(cx, cy - r * 2.5)
+  ctx.lineTo(cx, cy + r * 2.5)
   ctx.stroke()
 
   const fontSize = Math.max(9, Math.round(imgWidth / 160))
   ctx.font = `bold ${fontSize}px monospace`
-  ctx.fillText(`${match.name} ${(match.confidence * 100).toFixed(0)}%`, x + r + 2, y - 2)
+  ctx.fillText(`${match.name} ${(match.confidence * 100).toFixed(0)}%`, cx + r + 2, cy - 2)
 }
 
 // ─── ROI Preview Card ────────────────────────────────────────────────────────
