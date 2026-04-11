@@ -1,11 +1,11 @@
 {
   "charClasses": "0123456789.-%",
-  "numClasses": 19,
+  "numClasses": 13,
   "inputShape": [
     1,
     1,
-    32,
-    256
+    28,
+    28
   ],
   "valAccuracy": 1.0
 }

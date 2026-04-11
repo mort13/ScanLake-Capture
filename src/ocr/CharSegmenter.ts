@@ -131,16 +131,13 @@ function extractSubImage(image: ImageData, sx: number, sy: number, w: number, h:
 }
 
 /**
- * Resize an image to the model input dimensions (32×256) as a grayscale Float32Array.
- * Returns normalized [0,1] values in shape [1, 1, 32, 256].
+ * Shared resize helper: draws an image into a targetW×targetH canvas with
+ * aspect-ratio-preserved scaling (left-aligned, vertically centred, black padding),
+ * returns a grayscale Float32Array normalised to [0, 1].
  */
-export function prepareModelInput(image: ImageData): Float32Array {
-  const targetH = 32
-  const targetW = 256
+function resizeToFloat32(image: ImageData, targetW: number, targetH: number): Float32Array {
   const canvas = new OffscreenCanvas(targetW, targetH)
   const ctx = canvas.getContext('2d')!
-
-  // Draw source image onto target canvas (resize)
   const temp = new OffscreenCanvas(image.width, image.height)
   const tctx = temp.getContext('2d')!
   tctx.putImageData(image, 0, 0)
@@ -148,10 +145,7 @@ export function prepareModelInput(image: ImageData): Float32Array {
   ctx.fillStyle = '#000'
   ctx.fillRect(0, 0, targetW, targetH)
 
-  // Maintain aspect ratio, center in target
-  const scaleX = targetW / image.width
-  const scaleY = targetH / image.height
-  const scale = Math.min(scaleX, scaleY)
+  const scale = Math.min(targetW / image.width, targetH / image.height)
   const dw = Math.round(image.width * scale)
   const dh = Math.round(image.height * scale)
   const dx = Math.round((targetW - dw) / 2)
@@ -161,16 +155,22 @@ export function prepareModelInput(image: ImageData): Float32Array {
   const resized = ctx.getImageData(0, 0, targetW, targetH)
   const float32 = new Float32Array(targetH * targetW)
   for (let i = 0; i < targetH * targetW; i++) {
-    // Grayscale, normalized to [0, 1]
     float32[i] = (0.299 * resized.data[i * 4] + 0.587 * resized.data[i * 4 + 1] + 0.114 * resized.data[i * 4 + 2]) / 255
   }
   return float32
 }
 
 /**
- * Prepare a single character for per-char inference.
- * Same as prepareModelInput but for individual segmented characters.
+ * Prepare an ROI for word_cnn inference: resize to 32×256.
+ */
+export function prepareModelInput(image: ImageData): Float32Array {
+  return resizeToFloat32(image, 256, 32)
+}
+
+/**
+ * Prepare a single character segment for DigitCNN inference: resize to 28×28.
+ * DigitCNN takes 28×28 input — NOT the same as word_cnn's 32×256.
  */
 export function prepareCharInput(charImage: ImageData): Float32Array {
-  return prepareModelInput(charImage)
+  return resizeToFloat32(charImage, 28, 28)
 }

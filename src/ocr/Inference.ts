@@ -33,14 +33,26 @@ async function recognizeWord(
   const results = await session.run({ [inputName]: tensor })
   const output = results[session.outputNames[0]]
   const data = output.data as Float32Array
+  const dims = output.dims as number[]
 
-  // Decode output — model output shape determines decoding strategy
-  const decoded = decodeCTCOrClassOutput(data, meta.charClasses, output.dims as number[])
+  // word_cnn outputs class scores over word labels (not char classes).
+  // Use wordClasses array from JSON when available; fall back to charClasses string.
+  const labels: string[] = meta.wordClasses ?? [...meta.charClasses]
+  const numClasses = labels.length
+
+  // Output is [1, numClasses] — simple argmax classification
+  let bestIdx = 0
+  let bestVal = -Infinity
+  const classCount = dims.length === 2 ? dims[1] : data.length
+  for (let i = 0; i < Math.min(classCount, numClasses); i++) {
+    if (data[i] > bestVal) { bestVal = data[i]; bestIdx = i }
+  }
+  const confidence = softmaxMax(data, 0, Math.min(classCount, numClasses))
 
   return {
     roiName: roi.name,
-    text: decoded.text,
-    confidence: decoded.confidence,
+    text: labels[bestIdx] ?? '?',
+    confidence,
   }
 }
 
@@ -58,7 +70,8 @@ async function recognizeChars(
 
   for (const seg of segments) {
     const input = prepareCharInput(seg)
-    const tensor = new ort.Tensor('float32', input, [1, 1, 32, 256])
+    // DigitCNN takes 28×28 input
+    const tensor = new ort.Tensor('float32', input, [1, 1, 28, 28])
     const inputName = session.inputNames[0]
     const results = await session.run({ [inputName]: tensor })
     const output = results[session.outputNames[0]]
@@ -75,66 +88,6 @@ async function recognizeChars(
     text: totalText,
     confidence: minConfidence,
   }
-}
-
-/**
- * Decode model output — handles both CTC-style sequential output and
- * simple classification output.
- */
-function decodeCTCOrClassOutput(
-  data: Float32Array,
-  charClasses: string,
-  dims: number[],
-): { text: string; confidence: number } {
-  const numClasses = charClasses.length
-
-  if (dims.length === 3) {
-    // CTC output: [1, seqLen, numClasses] — greedy decode
-    const seqLen = dims[1]
-    let text = ''
-    let totalConf = 0
-    let count = 0
-    let prevIdx = -1
-
-    for (let t = 0; t < seqLen; t++) {
-      const offset = t * dims[2]
-      let maxIdx = 0
-      let maxVal = data[offset]
-      for (let c = 1; c < dims[2]; c++) {
-        if (data[offset + c] > maxVal) {
-          maxVal = data[offset + c]
-          maxIdx = c
-        }
-      }
-      // Apply softmax for confidence
-      const conf = softmaxMax(data, offset, dims[2])
-
-      // CTC blank token is typically the last class or index 0
-      const blankIdx = dims[2] - 1 >= numClasses ? dims[2] - 1 : -1
-
-      if (maxIdx !== blankIdx && maxIdx !== prevIdx && maxIdx < numClasses) {
-        text += charClasses[maxIdx]
-        totalConf += conf
-        count++
-      }
-      prevIdx = maxIdx
-    }
-
-    return {
-      text,
-      confidence: count > 0 ? totalConf / count : 0,
-    }
-  }
-
-  if (dims.length === 2) {
-    // Simple classification: [1, numClasses]
-    const { char, confidence } = bestPrediction(data, charClasses, '')
-    return { text: char, confidence }
-  }
-
-  // Fallback: treat as flat classification
-  const { char, confidence } = bestPrediction(data, charClasses, '')
-  return { text: char, confidence }
 }
 
 /** Get best prediction, optionally filtering by allowed chars */

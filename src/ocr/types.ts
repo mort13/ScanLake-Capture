@@ -114,4 +114,6 @@ export interface ModelMeta {
   numClasses: number
   inputShape: number[]
   valAccuracy: number
+  /** Word-class label list for word_cnn — populated by re-export or runtime detection */
+  wordClasses?: string[]
 }
