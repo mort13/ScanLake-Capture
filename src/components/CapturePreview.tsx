@@ -131,6 +131,16 @@ function FrameCanvas({ result }: { result: PipelinePreviewResult }) {
       drawCrosshair(ctx, m, '#50c878', img.width)
     }
 
+    // Sub-anchor search regions (light blue rectangles)
+    for (const [name, region] of result.subAnchorSearchRegions) {
+      ctx.strokeStyle = 'rgba(79,143,247,0.5)'
+      ctx.lineWidth = 1
+      ctx.strokeRect(region.x, region.y, region.width, region.height)
+      // Semi-transparent fill
+      ctx.fillStyle = 'rgba(79,143,247,0.05)'
+      ctx.fillRect(region.x, region.y, region.width, region.height)
+    }
+
     // Sub-anchor crosshairs
     for (const [, m] of result.subAnchorMatches) {
       drawCrosshair(ctx, m, '#4f8ff7', img.width)

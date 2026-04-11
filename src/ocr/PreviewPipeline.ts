@@ -8,6 +8,7 @@ import {
   applyTransform,
   getScale,
   type AffineTransform,
+  type SubAnchorDetectionResult,
 } from './AnchorDetector'
 import { extractRoi } from './RoiExtractor'
 import { getSegmentBoundaries } from './CharSegmenter'
@@ -47,6 +48,7 @@ export interface PipelinePreviewResult {
   profileStatus: PreviewProfileStatus
   anchorMatches: AnchorMatch[]
   subAnchorMatches: Map<string, AnchorMatch>
+  subAnchorSearchRegions: Map<string, { x: number; y: number; width: number; height: number }>
   transform: AffineTransform | null
   transformError: string | null
   roiPreviews: RoiPreviewData[]
@@ -74,6 +76,7 @@ export async function runPreviewPipeline(
   let transform: AffineTransform | null = null
   let transformError: string | null = null
   let subAnchorMatches = new Map<string, AnchorMatch>()
+  let subAnchorSearchRegions = new Map<string, { x: number; y: number; width: number; height: number }>()
   const roiPreviews: RoiPreviewData[] = []
 
   if (anchorMatches.length >= 2) {
@@ -82,7 +85,9 @@ export async function runPreviewPipeline(
       transform = computeAffineTransform(profileCfg.anchors, anchorMatches)
 
       onProgress?.('Detecting sub-anchors...')
-      subAnchorMatches = detectSubAnchors(frameImage, profileCfg.sub_anchors, anchorImages, transform)
+      const subAnchorResult = detectSubAnchors(frameImage, profileCfg.sub_anchors, anchorImages, transform)
+      subAnchorMatches = subAnchorResult.matches
+      subAnchorSearchRegions = subAnchorResult.searchRegions
 
       onProgress?.('Extracting ROIs...')
       const scale = getScale(transform)

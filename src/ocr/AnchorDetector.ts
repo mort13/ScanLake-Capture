@@ -1,5 +1,10 @@
 import type { AnchorConfig, AnchorMatch, SubAnchorConfig, SearchRegion } from './types'
 
+export interface SubAnchorDetectionResult {
+  matches: Map<string, AnchorMatch>
+  searchRegions: Map<string, { x: number; y: number; width: number; height: number }>
+}
+
 /**
  * Normalized cross-correlation template matching on grayscale ImageData.
  * Returns the best match position (top-left corner) and correlation score.
@@ -135,13 +140,20 @@ export function detectAnchors(
 /**
  * Detect sub-anchors using localized search regions (relative to the main affine-transformed frame).
  */
+export interface SubAnchorDetectionResult {
+  matches: Map<string, AnchorMatch>
+  searchRegions: Map<string, { x: number; y: number; width: number; height: number }>
+}
+
 export function detectSubAnchors(
   image: ImageData,
   subAnchors: SubAnchorConfig[],
   anchorImages: Map<string, ImageData>,
   transform: AffineTransform,
-): Map<string, AnchorMatch> {
-  const results = new Map<string, AnchorMatch>()
+): SubAnchorDetectionResult {
+  const matches = new Map<string, AnchorMatch>()
+  const searchRegions = new Map<string, { x: number; y: number; width: number; height: number }>()
+  
   for (const sa of subAnchors) {
     const tpl = anchorImages.get(sa.template_path)
     if (!tpl) continue
@@ -158,11 +170,12 @@ export function detectSubAnchors(
         width: Math.round(Math.abs(botRight.x - topLeft.x)),
         height: Math.round(Math.abs(botRight.y - topLeft.y)),
       }
+      searchRegions.set(sa.name, searchRegion)
     }
 
     const result = nccMatch(image, tpl, searchRegion)
     if (result.score >= sa.match_threshold) {
-      results.set(sa.name, {
+      matches.set(sa.name, {
         name: sa.name,
         // TOP-LEFT corner of matched region (spec: all coords are top-left)
         x: result.x,
@@ -173,7 +186,7 @@ export function detectSubAnchors(
       })
     }
   }
-  return results
+  return { matches, searchRegions }
 }
 
 /**

@@ -62,9 +62,10 @@ export async function runPipeline(
 
   // 5. Detect sub-anchors
   onProgress?.('Detecting sub-anchors...')
-  const subAnchorMatches = detectSubAnchors(
+  const subAnchorResult = detectSubAnchors(
     frameImage, profileCfg.sub_anchors, anchorImages, transform,
   )
+  const subAnchorMatches = subAnchorResult.matches
 
   // 6. Extract and recognize each ROI
   const roiResults = new Map<string, RoiResult>()
