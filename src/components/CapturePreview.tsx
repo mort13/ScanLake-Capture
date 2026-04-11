@@ -216,6 +216,7 @@ function RoiCard({ item }: { item: RoiPreviewData }) {
 
   const recognition = item.roi.recognition_mode
   const segMode = item.roi.seg_mode
+  const confPct = item.recognizedText !== null ? Math.round(item.recognitionConfidence * 100) : null
 
   return (
     <div className={`roi-card ${item.imageData ? '' : 'roi-card-missing'}`}>
@@ -227,6 +228,12 @@ function RoiCard({ item }: { item: RoiPreviewData }) {
         <canvas ref={canvasRef} className="roi-card-canvas" />
       ) : (
         <div className="roi-card-oob">out of bounds</div>
+      )}
+      {item.recognizedText !== null && (
+        <div className="roi-card-result" title={`confidence ${confPct}%`}>
+          <span className="roi-card-text">{item.recognizedText || '\u00a0'}</span>
+          <span className="roi-card-conf">{confPct}%</span>
+        </div>
       )}
     </div>
   )

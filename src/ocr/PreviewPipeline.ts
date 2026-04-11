@@ -11,6 +11,7 @@ import {
 } from './AnchorDetector'
 import { extractRoi } from './RoiExtractor'
 import { getSegmentBoundaries } from './CharSegmenter'
+import { recognizeRoi } from './Inference'
 
 export interface RoiPreviewData {
   roi: RoiConfig
@@ -21,6 +22,9 @@ export interface RoiPreviewData {
   pixelH: number
   /** X-positions of segmentation cut lines in ROI-local pixel coords */
   segBoundaries: number[]
+  /** CNN-recognized text (null if ROI out of bounds) */
+  recognizedText: string | null
+  recognitionConfidence: number
 }
 
 export interface PreviewProfileStatus {
@@ -110,7 +114,19 @@ export async function runPreviewPipeline(
         const imageData = extractRoi(frameImage, roi, transform, subAnchorMatches, profileCfg.sub_anchors)
         const segBoundaries = imageData ? getSegmentBoundaries(imageData, roi) : []
 
-        roiPreviews.push({ roi, imageData, pixelX, pixelY, pixelW, pixelH, segBoundaries })
+        let recognizedText: string | null = null
+        let recognitionConfidence = 0
+        if (imageData) {
+          try {
+            const result = await recognizeRoi(imageData, roi)
+            recognizedText = result.text
+            recognitionConfidence = result.confidence
+          } catch {
+            recognizedText = '(error)'
+          }
+        }
+
+        roiPreviews.push({ roi, imageData, pixelX, pixelY, pixelW, pixelH, segBoundaries, recognizedText, recognitionConfidence })
       }
     } catch (e) {
       transformError = e instanceof Error ? e.message : 'Transform failed'
