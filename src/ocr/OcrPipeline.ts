@@ -1,6 +1,6 @@
-import type { CaptureRegion, RoiResult } from './types'
+import type { CaptureRegion, RoiResult, AnchorConfig } from './types'
 import type { ScanFormData } from '../types'
-import { loadProfile, getProfileConfig, loadAllAnchors } from './ProfileLoader'
+import { loadProfile, getProfileConfig, loadAllAnchors, scaleAnchorImages, DEFAULT_PROFILE_FILE } from './ProfileLoader'
 import { preloadModels } from './ModelLoader'
 import { captureFrame } from './ScreenCapture'
 import {
@@ -11,10 +11,55 @@ import {
 import { extractRoi } from './RoiExtractor'
 import { recognizeRoi } from './Inference'
 import { mapResultsToForm } from './ResultMapper'
+import { IndexedDBCache } from '../store/IndexedDBCache'
+import { UserStore } from '../store/UserStore'
 
 export type ProgressCallback = (stage: string) => void
 
 let _modelsLoaded = false
+
+/** Scale candidates to probe when no cached scaling factor exists */
+const SCALE_CANDIDATES = [1.0, 0.75, 1.25, 1.5, 0.5625, 1.777, 2.0, 0.5]
+
+/**
+ * Determine the display-scaling factor for the current capture.
+ * Checks IndexedDB first; if absent, sniffs each candidate scale and picks
+ * the one that yields the most (and highest-confidence) anchor matches.
+ * The result is stored so it won't be re-detected on subsequent calls.
+ */
+async function resolveScalingFactor(
+  frameImage: ImageData,
+  anchors: AnchorConfig[],
+  baseImages: Map<string, ImageData>,
+  profileFile: string,
+  onProgress?: ProgressCallback,
+): Promise<number> {
+  const cached = await IndexedDBCache.getScalingFactor(profileFile)
+  if (cached !== null) return cached
+
+  onProgress?.('Detecting display scale...')
+  let bestScale = 1.0
+  let bestMatchCount = 0
+  let bestScore = -1
+
+  for (const scale of SCALE_CANDIDATES) {
+    const scaledImages = await scaleAnchorImages(baseImages, scale)
+    const matches = detectAnchors(frameImage, anchors, scaledImages)
+    const score = matches.reduce((s, m) => s + m.confidence, 0)
+    if (
+      matches.length > bestMatchCount ||
+      (matches.length === bestMatchCount && score > bestScore)
+    ) {
+      bestMatchCount = matches.length
+      bestScore = score
+      bestScale = scale
+    }
+    if (matches.length >= anchors.length) break // all anchors found — stop early
+  }
+
+  await IndexedDBCache.saveScalingFactor(profileFile, bestScale)
+  return bestScale
+}
 
 /**
  * Run the complete OCR pipeline:
@@ -30,7 +75,8 @@ export async function runPipeline(
 }> {
   // 1. Load profile + anchors + models
   onProgress?.('Loading profile...')
-  const masterProfile = await loadProfile()
+  const profileFile = UserStore.loadSettings().selectedShipProfile ?? DEFAULT_PROFILE_FILE
+  const masterProfile = await loadProfile(profileFile)
   const profileCfg = getProfileConfig(masterProfile, 'scan_results')
 
   onProgress?.('Loading models...')
@@ -40,13 +86,19 @@ export async function runPipeline(
   }
 
   onProgress?.('Loading anchor templates...')
-  const anchorImages = await loadAllAnchors(profileCfg.anchors, profileCfg.sub_anchors)
+  const baseAnchorImages = await loadAllAnchors(profileCfg.anchors, profileCfg.sub_anchors)
 
   // 2. Capture frame
   onProgress?.('Capturing screen...')
   const frameImage = await captureFrame(region)
 
-  // 3. Detect main anchors
+  // 3. Resolve display scaling (cached after first detection)
+  const scalingFactor = await resolveScalingFactor(
+    frameImage, profileCfg.anchors, baseAnchorImages, profileFile, onProgress,
+  )
+  const anchorImages = await scaleAnchorImages(baseAnchorImages, scalingFactor)
+
+  // 4. Detect main anchors
   onProgress?.('Detecting anchors...')
   const anchorMatches = detectAnchors(frameImage, profileCfg.anchors, anchorImages)
   if (anchorMatches.length < 2) {
@@ -56,7 +108,7 @@ export async function runPipeline(
     )
   }
 
-  // 4. Compute affine transform
+  // 5. Compute affine transform
   onProgress?.('Computing transform...')
   const transform = computeAffineTransform(profileCfg.anchors, anchorMatches)
 

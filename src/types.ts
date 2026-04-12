@@ -13,6 +13,7 @@ export interface UserSettings {
     save: string
     newCluster: string
   }
+  selectedShipProfile: string
 }
 
 export type SessionStatus = 'active' | 'closed' | 'archived'

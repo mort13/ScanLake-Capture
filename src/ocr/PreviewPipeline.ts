@@ -1,5 +1,5 @@
-import type { CaptureRegion, RoiConfig, AnchorMatch } from './types'
-import { loadProfile, getProfileConfig, loadAllAnchors } from './ProfileLoader'
+import type { CaptureRegion, RoiConfig, AnchorMatch, AnchorConfig } from './types'
+import { loadProfile, getProfileConfig, loadAllAnchors, scaleAnchorImages, DEFAULT_PROFILE_FILE } from './ProfileLoader'
 import { captureFrame } from './ScreenCapture'
 import {
   detectAnchors,
@@ -12,6 +12,44 @@ import {
 import { extractRoi } from './RoiExtractor'
 import { getSegmentBoundaries } from './CharSegmenter'
 import { recognizeRoi } from './Inference'
+import { IndexedDBCache } from '../store/IndexedDBCache'
+import { UserStore } from '../store/UserStore'
+
+const SCALE_CANDIDATES = [1.0, 0.75, 1.25, 1.5, 0.5625, 1.777, 2.0, 0.5]
+
+async function resolveScalingFactor(
+  frameImage: ImageData,
+  anchors: AnchorConfig[],
+  baseImages: Map<string, ImageData>,
+  profileFile: string,
+  onProgress?: (msg: string) => void,
+): Promise<number> {
+  const cached = await IndexedDBCache.getScalingFactor(profileFile)
+  if (cached !== null) return cached
+
+  onProgress?.('Detecting display scale...')
+  let bestScale = 1.0
+  let bestMatchCount = 0
+  let bestScore = -1
+
+  for (const scale of SCALE_CANDIDATES) {
+    const scaledImages = await scaleAnchorImages(baseImages, scale)
+    const matches = detectAnchors(frameImage, anchors, scaledImages)
+    const score = matches.reduce((s, m) => s + m.confidence, 0)
+    if (
+      matches.length > bestMatchCount ||
+      (matches.length === bestMatchCount && score > bestScore)
+    ) {
+      bestMatchCount = matches.length
+      bestScore = score
+      bestScale = scale
+    }
+    if (matches.length >= anchors.length) break
+  }
+
+  await IndexedDBCache.saveScalingFactor(profileFile, bestScale)
+  return bestScale
+}
 
 export interface RoiPreviewData {
   roi: RoiConfig
@@ -60,14 +98,21 @@ export async function runPreviewPipeline(
   onProgress?: (msg: string) => void,
 ): Promise<PipelinePreviewResult> {
   onProgress?.('Loading profile...')
-  const masterProfile = await loadProfile()
+  const profileFile = UserStore.loadSettings().selectedShipProfile ?? DEFAULT_PROFILE_FILE
+  const masterProfile = await loadProfile(profileFile)
   const profileCfg = getProfileConfig(masterProfile, 'scan_results')
 
   onProgress?.('Loading anchor templates...')
-  const anchorImages = await loadAllAnchors(profileCfg.anchors, profileCfg.sub_anchors)
+  const baseAnchorImages = await loadAllAnchors(profileCfg.anchors, profileCfg.sub_anchors)
 
   onProgress?.('Capturing screen...')
   const frameImage = await captureFrame(region)
+
+  // Resolve display scaling (cached; detected on first run)
+  const scalingFactor = await resolveScalingFactor(
+    frameImage, profileCfg.anchors, baseAnchorImages, profileFile, onProgress,
+  )
+  const anchorImages = await scaleAnchorImages(baseAnchorImages, scalingFactor)
 
   onProgress?.('Detecting anchors...')
   const anchorMatches = detectAnchors(frameImage, profileCfg.anchors, anchorImages)

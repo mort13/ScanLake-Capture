@@ -25,6 +25,8 @@ function saveProfile(profile: UserProfile): void {
 
 const DEFAULT_HOTKEYS = { capture: 'F9', save: 'F10', newCluster: 'F11' }
 
+const DEFAULT_SHIP_PROFILE = 'mole_relative_anchors_crnn.json'
+
 function loadSettings(): UserSettings {
   const stored = localStorage.getItem(SETTINGS_KEY)
   if (stored) {
@@ -33,9 +35,13 @@ function loadSettings(): UserSettings {
     if (!parsed.hotkeys) {
       parsed.hotkeys = { ...DEFAULT_HOTKEYS }
     }
+    // Backfill selectedShipProfile for existing saves
+    if (!parsed.selectedShipProfile) {
+      parsed.selectedShipProfile = DEFAULT_SHIP_PROFILE
+    }
     return parsed
   }
-  return { autoArchive: false, autoDownload: false, hotkeys: { ...DEFAULT_HOTKEYS } }
+  return { autoArchive: false, autoDownload: false, hotkeys: { ...DEFAULT_HOTKEYS }, selectedShipProfile: DEFAULT_SHIP_PROFILE }
 }
 
 function saveSettings(settings: UserSettings): void {

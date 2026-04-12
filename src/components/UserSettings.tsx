@@ -1,6 +1,13 @@
 import { useState, useEffect } from 'react'
 import { UserStore } from '../store/UserStore'
+import { IndexedDBCache } from '../store/IndexedDBCache'
 import type { UserProfile, UserSettings as UserSettingsType } from '../types'
+
+interface ShipProfileEntry {
+  key: string
+  label: string
+  file: string
+}
 
 interface Props {
   open: boolean
@@ -14,6 +21,14 @@ export function UserSettings({ open, onClose }: Props) {
   const [settings, setSettings] = useState<UserSettingsType>(UserStore.loadSettings)
   const [saved, setSaved] = useState(false)
   const [listeningFor, setListeningFor] = useState<HotkeyField | null>(null)
+  const [shipProfiles, setShipProfiles] = useState<ShipProfileEntry[]>([])
+
+  useEffect(() => {
+    fetch('/profiles/manifest.json')
+      .then(r => r.ok ? r.json() : [])
+      .then((entries: ShipProfileEntry[]) => setShipProfiles(entries))
+      .catch(() => setShipProfiles([]))
+  }, [])
 
   useEffect(() => {
     if (open) {
@@ -83,6 +98,17 @@ export function UserSettings({ open, onClose }: Props) {
 
         <div className="settings-section">
           <h3>Preferences</h3>
+          <label>
+            Ship Profile
+            <select
+              value={settings.selectedShipProfile}
+              onChange={e => setSettings(s => ({ ...s, selectedShipProfile: e.target.value }))}
+            >
+              {shipProfiles.map(p => (
+                <option key={p.key} value={p.file}>{p.label}</option>
+              ))}
+            </select>
+          </label>
           <label className="checkbox-label">
             <input type="checkbox" checked={settings.autoDownload}
               onChange={e => setSettings(s => ({ ...s, autoDownload: e.target.checked }))} />
@@ -117,6 +143,18 @@ export function UserSettings({ open, onClose }: Props) {
 
         <div className="settings-section danger">
           <h3>Danger Zone</h3>
+          <button
+            type="button"
+            onClick={() => {
+              IndexedDBCache.deleteScalingFactor(settings.selectedShipProfile).then(() => {
+                alert('Scale cache cleared — will re-detect on next capture.')
+              })
+            }}
+            className="btn-warning"
+          >
+            Reset Scale Detection
+          </button>
+          <p className="small-text">Forces scale re-detection on the next capture for the current ship profile.</p>
           <button onClick={handleClearCache} className="btn-danger">
             Clear All Cache
           </button>

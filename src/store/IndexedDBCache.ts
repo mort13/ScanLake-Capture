@@ -123,6 +123,9 @@ export const IndexedDBCache = {
   deleteScans,
   saveCaptureRegion,
   getCaptureRegion,
+  saveScalingFactor,
+  getScalingFactor,
+  deleteScalingFactor,
 }
 
 // OCR Settings
@@ -135,4 +138,21 @@ async function getCaptureRegion(): Promise<CaptureRegion | null> {
   const db = await getDB()
   const entry = await db.get('ocrSettings', 'captureRegion')
   return (entry?.data as CaptureRegion) ?? null
+}
+
+// Scaling factor — persisted per profile file so it only needs to be found once
+async function saveScalingFactor(profileFile: string, factor: number): Promise<void> {
+  const db = await getDB()
+  await db.put('ocrSettings', { key: `scalingFactor_${profileFile}`, data: factor })
+}
+
+async function getScalingFactor(profileFile: string): Promise<number | null> {
+  const db = await getDB()
+  const entry = await db.get('ocrSettings', `scalingFactor_${profileFile}`)
+  return entry !== undefined ? (entry.data as number) : null
+}
+
+async function deleteScalingFactor(profileFile: string): Promise<void> {
+  const db = await getDB()
+  await db.delete('ocrSettings', `scalingFactor_${profileFile}`)
 }
