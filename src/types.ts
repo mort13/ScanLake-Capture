@@ -14,6 +14,8 @@ export interface UserSettings {
     newCluster: string
   }
   selectedShipProfile: string
+  /** Fixed capture resolution, e.g. "1920x1080". Empty / undefined = auto-detect. */
+  captureResolution?: string
 }
 
 export type SessionStatus = 'active' | 'closed' | 'archived'

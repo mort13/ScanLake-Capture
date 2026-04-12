@@ -18,8 +18,12 @@ export type ProgressCallback = (stage: string) => void
 
 let _modelsLoaded = false
 
-/** Scale candidates to probe when no cached scaling factor exists */
-const SCALE_CANDIDATES = [1.0, 0.75, 1.25, 1.5, 0.5625, 1.777, 2.0, 0.5]
+/** Scale candidates to probe when no cached scaling factor exists.
+ * Reference resolution: 2560×1440. Each entry = target_width / 2560.
+ * 1.0=2560×1440  0.75=1920×1080  1.5=3840×2160  0.5=1280×720
+ * 0.625=1600×900  0.8=2048×1152  1.25=3200×1800  2.0=5120×2880
+ */
+const SCALE_CANDIDATES = [1.0, 0.75, 1.5, 0.5, 0.625, 0.8, 1.25, 2.0]
 
 /**
  * Determine the display-scaling factor for the current capture.
@@ -34,6 +38,13 @@ async function resolveScalingFactor(
   profileFile: string,
   onProgress?: ProgressCallback,
 ): Promise<number> {
+  // Manual resolution override — skip cache and detection entirely
+  const manualRes = UserStore.loadSettings().captureResolution
+  if (manualRes) {
+    const w = parseInt(manualRes.split('x')[0], 10)
+    if (w > 0) return w / 2560
+  }
+
   const cached = await IndexedDBCache.getScalingFactor(profileFile)
   if (cached !== null) return cached
 

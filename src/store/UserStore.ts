@@ -39,9 +39,13 @@ function loadSettings(): UserSettings {
     if (!parsed.selectedShipProfile) {
       parsed.selectedShipProfile = DEFAULT_SHIP_PROFILE
     }
+    // Backfill captureResolution for existing saves
+    if (parsed.captureResolution === undefined) {
+      parsed.captureResolution = ''
+    }
     return parsed
   }
-  return { autoArchive: false, autoDownload: false, hotkeys: { ...DEFAULT_HOTKEYS }, selectedShipProfile: DEFAULT_SHIP_PROFILE }
+  return { autoArchive: false, autoDownload: false, hotkeys: { ...DEFAULT_HOTKEYS }, selectedShipProfile: DEFAULT_SHIP_PROFILE, captureResolution: '' }
 }
 
 function saveSettings(settings: UserSettings): void {

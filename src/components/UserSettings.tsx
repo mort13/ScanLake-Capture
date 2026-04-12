@@ -109,6 +109,23 @@ export function UserSettings({ open, onClose }: Props) {
               ))}
             </select>
           </label>
+          <label>
+            Capture Resolution
+            <select
+              value={settings.captureResolution ?? ''}
+              onChange={e => setSettings(s => ({ ...s, captureResolution: e.target.value }))}
+            >
+              <option value="">Auto-detect</option>
+              <option value="2560x1440">2560×1440 (1440p — native)</option>
+              <option value="1920x1080">1920×1080 (1080p)</option>
+              <option value="3840x2160">3840×2160 (4K)</option>
+              <option value="1280x720">1280×720 (720p)</option>
+              <option value="1600x900">1600×900 (900p)</option>
+              <option value="2048x1152">2048×1152</option>
+              <option value="3200x1800">3200×1800 (1800p)</option>
+              <option value="5120x2880">5120×2880 (5K)</option>
+            </select>
+          </label>
           <label className="checkbox-label">
             <input type="checkbox" checked={settings.autoDownload}
               onChange={e => setSettings(s => ({ ...s, autoDownload: e.target.checked }))} />
@@ -154,7 +171,7 @@ export function UserSettings({ open, onClose }: Props) {
           >
             Reset Scale Detection
           </button>
-          <p className="small-text">Forces scale re-detection on the next capture for the current ship profile.</p>
+          <p className="small-text">Forces scale re-detection on the next capture for the current ship profile. Only relevant when Capture Resolution is set to Auto-detect.</p>
           <button onClick={handleClearCache} className="btn-danger">
             Clear All Cache
           </button>
