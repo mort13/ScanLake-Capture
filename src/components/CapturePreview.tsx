@@ -1,6 +1,7 @@
 import { useEffect, useRef } from 'react'
 import type { PipelinePreviewResult, RoiPreviewData, PreviewProfileStatus } from '../ocr/PreviewPipeline'
 import type { AnchorMatch } from '../ocr/types'
+import type { AnchorNearMiss } from '../ocr/AnchorDetector'
 
 interface Props {
   result: PipelinePreviewResult
@@ -16,6 +17,16 @@ export function CapturePreview({ result, onClose }: Props) {
         <button className="btn-danger btn-sm" onClick={onClose}>✕ Close</button>
       </div>
 
+      <div className="preview-debug-bar">
+        <span>Frame: {result.frameWidth}×{result.frameHeight}</span>
+        <span>Scale: {result.resolvedScale.toFixed(4)}</span>
+        {result.anchorNearMisses.length > 0 && (
+          <span className="debug-nearmiss-info" title={result.anchorNearMisses.map(m => `${m.name}: best=${(m.score*100).toFixed(0)}% threshold=${(m.threshold*100).toFixed(0)}%`).join(' | ')}>
+            ⚠ Near-misses: {result.anchorNearMisses.map(m => `${m.name} ${(m.score*100).toFixed(0)}%`).join(', ')}
+          </span>
+        )}
+      </div>
+
       {result.transformError && (
         <div className="preview-error">⚠ {result.transformError}</div>
       )}
@@ -25,6 +36,7 @@ export function CapturePreview({ result, onClose }: Props) {
           <FrameCanvas result={result} />
           <div className="preview-legend">
             <span className="legend-anchor">● Anchors</span>
+            <span className="legend-nearmiss">● Near-misses</span>
             <span className="legend-subanchor">● Sub-anchors</span>
             <span className="legend-roi">■ ROIs</span>
           </div>
@@ -131,6 +143,24 @@ function FrameCanvas({ result }: { result: PipelinePreviewResult }) {
       drawCrosshair(ctx, m, '#50c878', img.width)
     }
 
+    // Main anchor search regions (grey dashed)
+    for (const [name, region] of result.anchorSearchRegions) {
+      ctx.strokeStyle = 'rgba(200,200,200,0.6)'
+      ctx.lineWidth = 1
+      ctx.setLineDash([4, 3])
+      ctx.strokeRect(region.x, region.y, region.width, region.height)
+      ctx.setLineDash([])
+      const fontSize = Math.max(8, Math.round(img.width / 200))
+      ctx.font = `${fontSize}px monospace`
+      ctx.fillStyle = 'rgba(200,200,200,0.8)'
+      ctx.fillText(name, region.x + 2, region.y + fontSize + 1)
+    }
+
+    // Near-miss crosshairs (orange)
+    for (const m of result.anchorNearMisses) {
+      drawNearMissCrosshair(ctx, m, img.width)
+    }
+
     // Sub-anchor search regions (light blue rectangles)
     for (const [, region] of result.subAnchorSearchRegions) {
       ctx.strokeStyle = 'rgba(79,143,247,0.5)'
@@ -152,6 +182,40 @@ function FrameCanvas({ result }: { result: PipelinePreviewResult }) {
       ref={canvasRef}
       className="preview-frame-canvas"
     />
+  )
+}
+
+function drawNearMissCrosshair(
+  ctx: CanvasRenderingContext2D,
+  miss: AnchorNearMiss,
+  imgWidth: number,
+) {
+  const r = Math.max(6, Math.round(imgWidth / 192))
+  const cx = miss.x + miss.w / 2
+  const cy = miss.y + miss.h / 2
+  ctx.strokeStyle = '#ff8c00'
+  ctx.fillStyle = '#ff8c00'
+  ctx.lineWidth = 1.5
+
+  // Dashed circle to distinguish from confirmed matches
+  ctx.setLineDash([3, 3])
+  ctx.beginPath()
+  ctx.arc(cx, cy, r, 0, Math.PI * 2)
+  ctx.stroke()
+  ctx.setLineDash([])
+
+  ctx.beginPath()
+  ctx.moveTo(cx - r * 2.5, cy)
+  ctx.lineTo(cx + r * 2.5, cy)
+  ctx.moveTo(cx, cy - r * 2.5)
+  ctx.lineTo(cx, cy + r * 2.5)
+  ctx.stroke()
+
+  const fontSize = Math.max(9, Math.round(imgWidth / 160))
+  ctx.font = `bold ${fontSize}px monospace`
+  ctx.fillText(
+    `${miss.name} ${(miss.score * 100).toFixed(0)}%<${(miss.threshold * 100).toFixed(0)}%`,
+    cx + r + 2, cy - 2,
   )
 }
 

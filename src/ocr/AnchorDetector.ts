@@ -108,20 +108,48 @@ function normalizeSearchRegion(sr?: SearchRegion): { x: number; y: number; width
   }
 }
 
+/** Best NCC result for an anchor that did not meet the match threshold. */
+export interface AnchorNearMiss {
+  name: string
+  x: number
+  y: number
+  w: number
+  h: number
+  score: number
+  threshold: number
+  /** Pixel-space search region used, if any */
+  searchRegion?: { x: number; y: number; width: number; height: number }
+}
+
+export interface AnchorDetectionResult {
+  matches: AnchorMatch[]
+  nearMisses: AnchorNearMiss[]
+  /** Pixel-space search regions for anchors that have one defined */
+  anchorSearchRegions: Map<string, { x: number; y: number; width: number; height: number }>
+}
+
 /**
  * Detect anchors in the captured image.
- * Returns matched positions for each anchor with score above threshold.
+ * Returns matched positions for each anchor with score above threshold,
+ * plus near-miss data for anchors that failed.
  */
 export function detectAnchors(
   image: ImageData,
   anchors: AnchorConfig[],
   anchorImages: Map<string, ImageData>,
-): AnchorMatch[] {
+): AnchorDetectionResult {
   const matches: AnchorMatch[] = []
+  const nearMisses: AnchorNearMiss[] = []
+  const anchorSearchRegions = new Map<string, { x: number; y: number; width: number; height: number }>()
+
   for (const anchor of anchors) {
     const tpl = anchorImages.get(anchor.template_path)
     if (!tpl) continue
-    const result = nccMatch(image, tpl)
+    const sr = normalizeSearchRegion(anchor.search_region)
+    if (sr && sr.width > 0 && sr.height > 0) {
+      anchorSearchRegions.set(anchor.name, sr)
+    }
+    const result = nccMatch(image, tpl, sr && sr.width > 0 && sr.height > 0 ? sr : undefined)
     if (result.score >= anchor.match_threshold) {
       matches.push({
         name: anchor.name,
@@ -132,9 +160,20 @@ export function detectAnchors(
         h: tpl.height,
         confidence: result.score,
       })
+    } else {
+      nearMisses.push({
+        name: anchor.name,
+        x: result.x,
+        y: result.y,
+        w: tpl.width,
+        h: tpl.height,
+        score: result.score,
+        threshold: anchor.match_threshold,
+        searchRegion: sr && sr.width > 0 && sr.height > 0 ? sr : undefined,
+      })
     }
   }
-  return matches
+  return { matches, nearMisses, anchorSearchRegions }
 }
 
 /**

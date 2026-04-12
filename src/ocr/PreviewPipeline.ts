@@ -19,9 +19,9 @@ import { UserStore } from '../store/UserStore'
  * Reference resolution: 2560×1440. Each entry = target_width / 2560.
  * 1.0=2560×1440  0.75=1920×1080  1.5=3840×2160  0.5=1280×720
  * 0.625=1600×900  0.8=2048×1152  1.25=3200×1800  2.0=5120×2880
- * 1.34375=3440×1440 (ultrawide)
+ * Ultrawide (3440×1440, 2560×1080 etc.) share height with a 16:9 tier — no extra entry needed.
  */
-const SCALE_CANDIDATES = [1.0, 0.75, 1.5, 0.5, 0.625, 0.8, 1.25, 1.34375, 2.0]
+const SCALE_CANDIDATES = [1.0, 0.75, 1.5, 0.5, 0.625, 0.8, 1.25, 2.0]
 
 async function resolveScalingFactor(
   frameImage: ImageData,
@@ -33,8 +33,8 @@ async function resolveScalingFactor(
   // Manual resolution override — skip cache and detection entirely
   const manualRes = UserStore.loadSettings().captureResolution
   if (manualRes) {
-    const w = parseInt(manualRes.split('x')[0], 10)
-    if (w > 0) return w / 2560
+    const h = parseInt(manualRes.split('x')[1], 10)
+    if (h > 0) return h / 1440
   }
 
   const cached = await IndexedDBCache.getScalingFactor(profileFile)
@@ -47,7 +47,7 @@ async function resolveScalingFactor(
 
   for (const scale of SCALE_CANDIDATES) {
     const scaledImages = await scaleAnchorImages(baseImages, scale)
-    const matches = detectAnchors(frameImage, anchors, scaledImages)
+    const { matches } = detectAnchors(frameImage, anchors, scaledImages)
     const score = matches.reduce((s, m) => s + m.confidence, 0)
     if (
       matches.length > bestMatchCount ||
@@ -97,8 +97,18 @@ export interface PreviewProfileStatus {
 
 export interface PipelinePreviewResult {
   frameImage: ImageData
+  /** Width of the captured frame in pixels */
+  frameWidth: number
+  /** Height of the captured frame in pixels */
+  frameHeight: number
+  /** Resolved display scale factor (template pixels × scale = frame pixels) */
+  resolvedScale: number
   profileStatus: PreviewProfileStatus
   anchorMatches: AnchorMatch[]
+  /** Best NCC position for each anchor that did NOT meet its threshold */
+  anchorNearMisses: import('./AnchorDetector').AnchorNearMiss[]
+  /** Pixel-space search regions for main anchors that have one defined */
+  anchorSearchRegions: Map<string, { x: number; y: number; width: number; height: number }>
   subAnchorMatches: Map<string, AnchorMatch>
   subAnchorSearchRegions: Map<string, { x: number; y: number; width: number; height: number }>
   transform: AffineTransform | null
@@ -128,7 +138,7 @@ export async function runPreviewPipeline(
   const anchorImages = await scaleAnchorImages(baseAnchorImages, scalingFactor)
 
   onProgress?.('Detecting anchors...')
-  const anchorMatches = detectAnchors(frameImage, profileCfg.anchors, anchorImages)
+  const { matches: anchorMatches, nearMisses: anchorNearMisses, anchorSearchRegions } = detectAnchors(frameImage, profileCfg.anchors, anchorImages)
   const foundAnchorNames = anchorMatches.map(m => m.name)
   const missingAnchorNames = profileCfg.anchors.map(a => a.name).filter(n => !foundAnchorNames.includes(n))
 
@@ -210,6 +220,9 @@ export async function runPreviewPipeline(
 
   return {
     frameImage,
+    frameWidth: frameImage.width,
+    frameHeight: frameImage.height,
+    resolvedScale: scalingFactor,
     profileStatus: {
       masterName: masterProfile.name,
       profileName: 'scan_results',
@@ -225,6 +238,8 @@ export async function runPreviewPipeline(
       roisExtracted: roiPreviews.filter(r => r.imageData !== null).length,
     },
     anchorMatches,
+    anchorNearMisses,
+    anchorSearchRegions,
     subAnchorMatches,
     subAnchorSearchRegions,
     transform,

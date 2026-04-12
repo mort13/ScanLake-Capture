@@ -498,8 +498,28 @@ label {
   flex-shrink: 0;
 }
 .legend-anchor     { color: var(--success); }
+.legend-nearmiss   { color: #ff8c00; }
 .legend-subanchor  { color: var(--primary); }
 .legend-roi        { color: #ffe066; }
+
+/* Debug info bar */
+.preview-debug-bar {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  padding: 3px 12px;
+  background: rgba(0,0,0,0.4);
+  font-size: 0.72rem;
+  font-family: monospace;
+  color: var(--text-muted, #888);
+  flex-shrink: 0;
+  flex-wrap: wrap;
+  border-bottom: 1px solid var(--border);
+}
+.debug-nearmiss-info {
+  color: #ff8c00;
+  cursor: default;
+}
 
 /* ── Right: ROI grid ─ */
 .preview-roi-col {
