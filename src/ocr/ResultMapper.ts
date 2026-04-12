@@ -28,8 +28,8 @@ export function mapResultsToForm(
     return ''
   }
 
-  // Like get(), but strips a trailing % sign (amounts, resistance)
-  const getNumeric = (key: string): string => get(key).replace(/%$/, '')
+  // Like get(), but strips a trailing % sign and normalizes comma to dot
+  const getNumeric = (key: string): string => get(key).replace(/%$/, '').replace(/,/g, '.')
 
   // Detect the top-level wrapper prefix (new schema wraps everything under "scan")
   const firstKey = flat.keys().next().value as string | undefined
