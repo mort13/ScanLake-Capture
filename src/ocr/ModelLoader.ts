@@ -25,9 +25,13 @@ export async function getWordMeta(): Promise<ModelMeta> {
 
 export async function getCrnnSession(): Promise<ort.InferenceSession> {
   if (crnnSession) return crnnSession
-  const modelBuffer = await fetch('/models/digit_crnn.onnx').then(r => r.arrayBuffer())
+  const [modelBuffer, dataBuffer] = await Promise.all([
+    fetch('/models/digit_crnn.onnx').then(r => r.arrayBuffer()),
+    fetch('/models/digit_crnn.onnx.data').then(r => r.arrayBuffer()),
+  ])
   crnnSession = await ort.InferenceSession.create(modelBuffer, {
     executionProviders: ['wasm'],
+    externalData: [{ path: 'digit_crnn.onnx.data', data: dataBuffer }],
   })
   return crnnSession
 }
