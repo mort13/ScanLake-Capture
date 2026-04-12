@@ -1,3 +1,4 @@
 [
-  { "key": "mole", "label": "Mole", "file": "mole_relative_anchors_crnn.json" }
+  { "key": "mole", "label": "Mole", "file": "mole_relative_anchors_crnn.json" },
+  { "key": "golem", "label": "Golem", "file": "golem_relative_anchors_crnn.json" }
 ]
