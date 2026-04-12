@@ -46,38 +46,109 @@ function projectionBoundaries(image: ImageData): number[] {
 }
 
 /**
- * Shared resize helper: draws an image into a targetW×targetH canvas with
- * aspect-ratio-preserved scaling (left-aligned, vertically centred, black padding),
- * returns a grayscale Float32Array normalised to [0, 1].
+ * Autocrop to the bounding box of bright text, matching the Python
+ * _autocrop_text() from word_cnn/dataset.py.
+ * Uses 35% of peak brightness as the cut-off.
+ * Returns cropped region as {x, y, w, h} or null if blank.
  */
-function resizeToFloat32(image: ImageData, targetW: number, targetH: number): Float32Array {
-  const canvas = new OffscreenCanvas(targetW, targetH)
-  const ctx = canvas.getContext('2d')!
-  const temp = new OffscreenCanvas(image.width, image.height)
-  const tctx = temp.getContext('2d')!
-  tctx.putImageData(image, 0, 0)
-
-  ctx.fillStyle = '#000'
-  ctx.fillRect(0, 0, targetW, targetH)
-
-  const scale = Math.min(targetW / image.width, targetH / image.height)
-  const dw = Math.round(image.width * scale)
-  const dh = Math.round(image.height * scale)
-  const dx = Math.round((targetW - dw) / 2)
-  const dy = Math.round((targetH - dh) / 2)
-  ctx.drawImage(temp, 0, 0, image.width, image.height, dx, dy, dw, dh)
-
-  const resized = ctx.getImageData(0, 0, targetW, targetH)
-  const float32 = new Float32Array(targetH * targetW)
-  for (let i = 0; i < targetH * targetW; i++) {
-    float32[i] = (0.299 * resized.data[i * 4] + 0.587 * resized.data[i * 4 + 1] + 0.114 * resized.data[i * 4 + 2]) / 255
+function autocropBounds(gray: Float32Array, w: number, h: number): { x: number; y: number; w: number; h: number } | null {
+  let peak = 0
+  for (let i = 0; i < gray.length; i++) {
+    if (gray[i] > peak) peak = gray[i]
   }
-  return float32
+  if (peak < 10) return null
+
+  const bright = Math.max(8, Math.round(peak * 0.35))
+
+  // Column max
+  let colLeft = w, colRight = -1
+  for (let x = 0; x < w; x++) {
+    let colMax = 0
+    for (let y = 0; y < h; y++) {
+      const v = gray[y * w + x]
+      if (v > colMax) colMax = v
+    }
+    if (colMax > bright) {
+      if (x < colLeft) colLeft = x
+      colRight = x
+    }
+  }
+
+  // Row max
+  let rowTop = h, rowBottom = -1
+  for (let y = 0; y < h; y++) {
+    let rowMax = 0
+    for (let x = 0; x < w; x++) {
+      const v = gray[y * w + x]
+      if (v > rowMax) rowMax = v
+    }
+    if (rowMax > bright) {
+      if (y < rowTop) rowTop = y
+      rowBottom = y
+    }
+  }
+
+  if (colRight < colLeft || rowBottom < rowTop) return null
+  return { x: colLeft, y: rowTop, w: colRight - colLeft + 1, h: rowBottom - rowTop + 1 }
 }
 
 /**
- * Prepare an ROI for word_cnn inference: resize to 32×256.
+ * Prepare an ROI for word_cnn inference.
+ * Mirrors the Python pipeline: convert to grayscale, autocrop to text bounding
+ * box, resize preserving aspect ratio (left-aligned, vertically centred, black
+ * padding) into a 32×256 canvas, normalise to [0,1].
+ * Returns null if the image has low contrast (max-min < 100).
  */
-export function prepareModelInput(image: ImageData): Float32Array {
-  return resizeToFloat32(image, 256, 32)
+export function prepareModelInput(image: ImageData): Float32Array | null {
+  const w = image.width
+  const h = image.height
+  const d = image.data
+
+  // Convert to grayscale (0-255)
+  const gray = new Float32Array(w * h)
+  for (let i = 0; i < w * h; i++) {
+    gray[i] = 0.299 * d[i * 4] + 0.587 * d[i * 4 + 1] + 0.114 * d[i * 4 + 2]
+  }
+
+  // Contrast check: skip low-contrast images (matches Python predictor)
+  let gMin = 255, gMax = 0
+  for (let i = 0; i < gray.length; i++) {
+    if (gray[i] < gMin) gMin = gray[i]
+    if (gray[i] > gMax) gMax = gray[i]
+  }
+  if (gMax - gMin < 100) return null
+
+  // Autocrop to text bounding box (matches Python _autocrop_text)
+  const crop = autocropBounds(gray, w, h)
+  if (!crop) return null
+
+  // Draw the cropped region onto a 256×32 canvas, left-aligned, vertically centred
+  const TARGET_W = 256
+  const TARGET_H = 32
+
+  // Create source canvas with the grayscale image
+  const srcCanvas = new OffscreenCanvas(w, h)
+  const srcCtx = srcCanvas.getContext('2d')!
+  srcCtx.putImageData(image, 0, 0)
+
+  // Resize preserving aspect ratio
+  const scale = Math.min(TARGET_W / crop.w, TARGET_H / crop.h)
+  const dw = Math.round(crop.w * scale)
+  const dh = Math.round(crop.h * scale)
+  const dy = Math.round((TARGET_H - dh) / 2)
+
+  const outCanvas = new OffscreenCanvas(TARGET_W, TARGET_H)
+  const outCtx = outCanvas.getContext('2d')!
+  outCtx.fillStyle = '#000'
+  outCtx.fillRect(0, 0, TARGET_W, TARGET_H)
+  // Left-aligned (dx=0), vertically centred
+  outCtx.drawImage(srcCanvas, crop.x, crop.y, crop.w, crop.h, 0, dy, dw, dh)
+
+  // Convert to normalised grayscale Float32Array
+  const resized = outCtx.getImageData(0, 0, TARGET_W, TARGET_H)
+  const float32 = new Float32Array(TARGET_H * TARGET_W)
+  for (let i = 0; i < TARGET_H * TARGET_W; i++) {
+    float32[i] = (0.299 * resized.data[i * 4] + 0.587 * resized.data[i * 4 + 1] + 0.114 * resized.data[i * 4 + 2]) / 255
+  }
+  return float32
 }

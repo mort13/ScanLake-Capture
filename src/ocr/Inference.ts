@@ -35,6 +35,11 @@ async function recognizeWord(
   const meta = await getWordMeta()
   const input = prepareModelInput(roiImage)
 
+  // prepareModelInput returns null for low-contrast / blank images
+  if (!input) {
+    return { roiName: roi.name, text: '', confidence: 0 }
+  }
+
   const tensor = new ort.Tensor('float32', input, [1, 1, 32, 256])
   const inputName = session.inputNames[0]
   const results = await session.run({ [inputName]: tensor })

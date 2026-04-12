@@ -117,7 +117,8 @@ export async function runPreviewPipeline(
         const pixelX = Math.round(imgX)
         const pixelY = Math.round(imgY)
 
-        const imageData = extractRoi(frameImage, roi, transform, subAnchorMatches, profileCfg.sub_anchors)
+        const imageData = extractRoi(frameImage, roi, transform, subAnchorMatches, profileCfg.sub_anchors,
+          roi.recognition_mode === 'word_cnn')  // word_cnn uses raw (unfiltered) image
         // CRNN doesn't use segmentation — skip boundaries for digit_crnn
         const segBoundaries = roi.recognition_mode === 'digit_crnn' 
           ? [] 

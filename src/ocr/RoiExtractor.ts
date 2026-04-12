@@ -4,6 +4,8 @@ import { type AffineTransform, applyTransform, getScale } from './AnchorDetector
 /**
  * Extract a single ROI from the image using the affine transform.
  * If the ROI has a sub_anchor, use that for local positioning instead.
+ * Pass skipFilters=true to return the raw (unfiltered) crop (used by word_cnn
+ * to match the PyTorch pipeline which feeds raw images to the word predictor).
  */
 export function extractRoi(
   image: ImageData,
@@ -11,6 +13,7 @@ export function extractRoi(
   transform: AffineTransform,
   subAnchorMatches: Map<string, AnchorMatch>,
   subAnchorConfigs: { name: string; ref_x: number; ref_y: number }[],
+  skipFilters = false,
 ): ImageData | null {
   const scale = getScale(transform)
 
@@ -53,8 +56,8 @@ export function extractRoi(
   tempCtx.putImageData(new ImageData(new Uint8ClampedArray(image.data), image.width, image.height), 0, 0)
   const roiData = tempCtx.getImageData(x, y, w, h)
 
-  // Apply filters
-  return applyFilters(roiData, roi.filters)
+  // Apply filters (unless caller asked for the raw crop)
+  return skipFilters ? roiData : applyFilters(roiData, roi.filters)
 }
 
 /** Apply the per-ROI filter pipeline */

@@ -81,6 +81,7 @@ export async function runPipeline(
       transform,
       subAnchorMatches,
       profileCfg.sub_anchors,
+      roi.recognition_mode === 'word_cnn',  // word_cnn uses raw (unfiltered) image
     )
 
     if (!roiImage) {
