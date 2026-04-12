@@ -123,6 +123,7 @@ export function UserSettings({ open, onClose }: Props) {
               <option value="1600x900">1600×900 (900p)</option>
               <option value="2048x1152">2048×1152</option>
               <option value="3200x1800">3200×1800 (1800p)</option>
+              <option value="3440x1440">3440×1440 (ultrawide)</option>
               <option value="5120x2880">5120×2880 (5K)</option>
             </select>
           </label>

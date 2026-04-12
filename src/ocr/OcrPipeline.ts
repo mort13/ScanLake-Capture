@@ -22,8 +22,9 @@ let _modelsLoaded = false
  * Reference resolution: 2560×1440. Each entry = target_width / 2560.
  * 1.0=2560×1440  0.75=1920×1080  1.5=3840×2160  0.5=1280×720
  * 0.625=1600×900  0.8=2048×1152  1.25=3200×1800  2.0=5120×2880
+ * 1.34375=3440×1440 (ultrawide)
  */
-const SCALE_CANDIDATES = [1.0, 0.75, 1.5, 0.5, 0.625, 0.8, 1.25, 2.0]
+const SCALE_CANDIDATES = [1.0, 0.75, 1.5, 0.5, 0.625, 0.8, 1.25, 1.34375, 2.0]
 
 /**
  * Determine the display-scaling factor for the current capture.
