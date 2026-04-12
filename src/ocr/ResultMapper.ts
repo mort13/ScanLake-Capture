@@ -5,7 +5,8 @@ import { MATERIAL_TYPES } from '../data/materials'
 
 /**
  * Map OCR results from ROIs into a ScanFormData object that can directly populate the form.
- * Walks the output_schema tree, combines _int/_dec pairs, applies 75% confidence threshold, and fuzzy-matches known values.
+ * Walks the output_schema tree, applies 75% confidence threshold, and fuzzy-matches known values.
+ * The new schema emits direct keys (no _int/_dec pairs); amounts/instability/volume come whole from CRNN.
  */
 export function mapResultsToForm(
   roiResults: Map<string, RoiResult>,
@@ -20,117 +21,59 @@ export function mapResultsToForm(
   const get = (key: string): string => {
     const r = flat.get(key)
     if (r) {
-      // Only accept if confidence >= 75%
-      if (r.confidence < CONFIDENCE_THRESHOLD) {
-        confidences.set(key, r.confidence)
-        return ''
-      }
       confidences.set(key, r.confidence)
+      if (r.confidence < CONFIDENCE_THRESHOLD) return ''
       return r.text.trim()
     }
     return ''
   }
 
-  // Combine int + dec pairs with confidence threshold
-  const combine = (intKey: string, decKey: string): string => {
-    const intPart = get(intKey)
-    const decPart = get(decKey)
-    if (!intPart && !decPart) return ''
-    // Merge confidences (take the minimum)
-    const intConf = confidences.get(intKey) ?? 1
-    const decConf = confidences.get(decKey) ?? 1
-    confidences.set(intKey.replace('_int', ''), Math.min(intConf, decConf))
-    if (!decPart) return intPart
-    return `${intPart}.${decPart}`
-  }
+  // Detect the top-level wrapper prefix (new schema wraps everything under "scan")
+  const firstKey = flat.keys().next().value as string | undefined
+  const prefix = firstKey?.startsWith('scan.') ? 'scan.' : ''
 
-  // Deposit
-  const rawDeposit = get('deposit_name') || get('deposit')
+  // Scalar fields
+  const rawDeposit = get(`${prefix}deposit_name`) || get(`${prefix}deposit`)
   const deposit = fuzzyMatch(rawDeposit, DEPOSIT_TYPES as unknown as string[])
-  if (deposit) confidences.set('deposit', confidences.get('deposit_name') ?? confidences.get('deposit') ?? 0)
+  if (deposit) confidences.set('deposit', confidences.get(`${prefix}deposit_name`) ?? confidences.get(`${prefix}deposit`) ?? 0)
 
-  // Mass
-  const mass = get('mass')
+  const mass = get(`${prefix}mass`)
+  const resistance = get(`${prefix}resistance`)
+  const instability = get(`${prefix}instability`)
+  const volume = get(`${prefix}volume`)
 
-  // Resistance
-  const resistance = get('resistance')
-
-  // Instability (combined int + dec)
-  const instability = combine('instability_int', 'instability_dec')
-
-  // Volume (combined int + dec)
-  let volume = combine('volume_int', 'volume_dec')
-  // Also check direct 'volume' key
-  if (!volume) volume = get('volume')
-
-  // Materials: extract from composition array in the schema
+  // Materials: named slots material1…material5
   const materials: MaterialFormRow[] = []
-  for (let i = 0; i < 5; i++) {
-    // Look for composition[i].* entries in the flat map
-    const materialKey = `composition[${i}].name`
-    const amountIntKey = `composition[${i}].amount_int`
-    const amountDecKey = `composition[${i}].amount_dec`
-    const qualityKey = `composition[${i}].quality`
-
-    const rawName = flat.get(materialKey)?.text.trim() ?? ''
-    const conf = flat.get(materialKey)?.confidence ?? 0
-    if (rawName && conf >= CONFIDENCE_THRESHOLD) {
-      confidences.set(`composition[${i}].name`, conf)
+  for (const slot of ['material1', 'material2', 'material3', 'material4', 'material5']) {
+    const base = `${prefix}composition.${slot}`
+    const rawName = flat.get(`${base}.name`)?.text.trim() ?? ''
+    const nameConf = flat.get(`${base}.name`)?.confidence ?? 0
+    if (rawName && nameConf >= CONFIDENCE_THRESHOLD) {
+      confidences.set(`${base}.name`, nameConf)
     }
-    const materialType = fuzzyMatch(rawName, MATERIAL_TYPES as unknown as string[])
+    const materialType = nameConf >= CONFIDENCE_THRESHOLD ? fuzzyMatch(rawName, MATERIAL_TYPES as unknown as string[]) : ''
 
-    const amountInt = flat.get(amountIntKey)?.text.trim() ?? ''
-    const amountDec = flat.get(amountDecKey)?.text.trim() ?? ''
-    const intConf = flat.get(amountIntKey)?.confidence ?? 0
-    const decConf = flat.get(amountDecKey)?.confidence ?? 0
-
-    // Only include amount if both components meet threshold
-    let amount = ''
-    if (intConf >= CONFIDENCE_THRESHOLD || decConf >= CONFIDENCE_THRESHOLD) {
-      const intPart = intConf >= CONFIDENCE_THRESHOLD ? amountInt : ''
-      const decPart = decConf >= CONFIDENCE_THRESHOLD ? amountDec : ''
-      amount = intPart && decPart ? `${intPart}.${decPart}` : intPart || decPart
-      confidences.set(`composition[${i}].amount`, Math.min(intConf, decConf))
-    }
-
-    const qualityRaw = flat.get(qualityKey)?.text.trim() ?? ''
-    const qualConf = flat.get(qualityKey)?.confidence ?? 0
-    if (qualityRaw && qualConf >= CONFIDENCE_THRESHOLD) {
-      confidences.set(`composition[${i}].quality`, qualConf)
-    }
-    const quality = qualConf >= CONFIDENCE_THRESHOLD ? qualityRaw : ''
+    const amount = get(`${base}.amount`)
+    const quality = get(`${base}.quality`)
 
     if (materialType || amount || quality) {
-      materials.push({
-        type: materialType,
-        amount: amount,
-        quality: quality,
-      })
+      materials.push({ type: materialType, amount, quality })
     }
   }
 
-  // Ensure at least one empty row
   if (materials.length === 0) {
     materials.push({ type: '', amount: '', quality: '' })
   }
 
   return {
-    formData: {
-      deposit,
-      mass,
-      resistance,
-      instability,
-      volume,
-      materials,
-    },
+    formData: { deposit, mass, resistance, instability, volume, materials },
     confidences,
   }
 }
 
 /**
- * Walk the output_schema tree and collect all leaf ROI references,
- * building a Map from schema key path → RoiResult.
- * Preserves nested structure: composition[i].name, composition[i].amount_int, etc.
+ * Walk the output_schema tree and collect all leaf ROI references into a flat Map.
+ * Keys are dot-joined paths: e.g. "scan.composition.material1.amount"
  */
 function flattenSchema(
   nodes: OutputSchemaNode[],
@@ -138,48 +81,23 @@ function flattenSchema(
 ): Map<string, RoiResult> {
   const result = new Map<string, RoiResult>()
 
-  function walk(nodes: OutputSchemaNode[], prefix = '') {
+  function walk(nodes: OutputSchemaNode[], prefix: string) {
     for (const node of nodes) {
-      // Build the full key path, handling arrays
-      let keyPath = prefix
-      if (prefix) {
-        // If parent is an array (composition), use bracket notation: composition[i].key
-        // Otherwise use dot notation: key.subkey
-        if (prefix.includes('[')) {
-          // Array context: append with dot
-          keyPath = `${prefix}.${node.key}`
-        } else {
-          // Object context: use dot
-          keyPath = prefix ? `${prefix}.${node.key}` : node.key
-        }
-      } else {
-        keyPath = node.key
-      }
+      if (!node.key) continue  // skip malformed nodes
+      const keyPath = prefix ? `${prefix}.${node.key}` : node.key
 
       if (node.roi) {
-        // Leaf: ROI reference
         const roiResult = roiResults.get(node.roi)
-        if (roiResult) {
-          result.set(keyPath, roiResult)
-        }
+        if (roiResult) result.set(keyPath, roiResult)
       }
 
       if (node.children) {
-        // Check if this node represents an array (composition has 5 items)
-        if (node.key === 'composition' && Array.isArray(node.children)) {
-          // composition is an array, repeat children for each slot (0-4)
-          for (let i = 0; i < 5; i++) {
-            walk(node.children, `composition[${i}]`)
-          }
-        } else {
-          // Regular nested object
-          walk(node.children, keyPath)
-        }
+        walk(node.children, keyPath)
       }
     }
   }
 
-  walk(nodes)
+  walk(nodes, '')
   return result
 }
 

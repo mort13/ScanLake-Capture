@@ -14,6 +14,8 @@ export async function loadProfile(): Promise<MasterProfile> {
 export function getProfileConfig(profile: MasterProfile, name: string): ProfileConfig {
   const cfg = profile.profiles[name]
   if (!cfg) throw new Error(`Profile "${name}" not found`)
+  // sub_anchors may be absent from updated profiles
+  cfg.sub_anchors ??= []
   return cfg
 }
 
