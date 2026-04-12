@@ -28,7 +28,7 @@ export function AboutModal({ open, onClose }: Props) {
           </li>
           <li>
             <strong>Capture a scan</strong> — Inside a session, click <em>Capture Screen</em> to
-            select a screen region. Position the capture box over the rock scanner readout, then
+            select a screen region. Position the capture box over the rock scanner readout, from above scan results to below cargo. Give a healthy margin, then
             confirm. The OCR pipeline will automatically detect the anchor points, extract ROIs,
             and recognise the values.
           </li>
@@ -53,6 +53,7 @@ export function AboutModal({ open, onClose }: Props) {
           <li>Keep the in-game scanner readout fully visible and unobscured before capturing.</li>
           <li>Use the hotkeys (configurable in Settings) to speed up the capture → save loop.</li>
           <li>The preview overlay shows what the OCR sees — use it to diagnose recognition issues.</li>
+          <li>OCR has big issues currently with bright backgrounds and low contrast text, use it in the dark for best results.</li>
           <li>Material amounts must sum to 100 %. The validation badge will highlight any errors.</li>
         </ul>
 
