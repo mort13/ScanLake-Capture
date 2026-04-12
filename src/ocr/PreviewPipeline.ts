@@ -118,7 +118,10 @@ export async function runPreviewPipeline(
         const pixelY = Math.round(imgY)
 
         const imageData = extractRoi(frameImage, roi, transform, subAnchorMatches, profileCfg.sub_anchors)
-        const segBoundaries = imageData ? getSegmentBoundaries(imageData, roi) : []
+        // CRNN doesn't use segmentation — skip boundaries for digit_crnn
+        const segBoundaries = roi.recognition_mode === 'digit_crnn' 
+          ? [] 
+          : (imageData ? getSegmentBoundaries(imageData, roi) : [])
 
         let recognizedText: string | null = null
         let recognitionConfidence = 0

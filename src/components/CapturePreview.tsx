@@ -212,15 +212,17 @@ function RoiCard({ item }: { item: RoiPreviewData }) {
     ctx.imageSmoothingEnabled = false
     ctx.drawImage(temp, 0, 0, img.width, img.height, 0, 0, dw, dh)
 
-    // Draw segmentation cut lines
-    ctx.strokeStyle = '#50c878'
-    ctx.lineWidth = 1
-    for (const bx of item.segBoundaries) {
-      const dx = bx * scale
-      ctx.beginPath()
-      ctx.moveTo(dx, 0)
-      ctx.lineTo(dx, dh)
-      ctx.stroke()
+    // Draw segmentation cut lines (skip for CRNN — no segmentation needed)
+    if (item.roi.recognition_mode !== 'digit_crnn') {
+      ctx.strokeStyle = '#50c878'
+      ctx.lineWidth = 1
+      for (const bx of item.segBoundaries) {
+        const dx = bx * scale
+        ctx.beginPath()
+        ctx.moveTo(dx, 0)
+        ctx.lineTo(dx, dh)
+        ctx.stroke()
+      }
     }
   }, [item])
 
@@ -245,7 +247,7 @@ function RoiCard({ item }: { item: RoiPreviewData }) {
           <span className="roi-card-conf">{confPct}%</span>
         </div>
       )}
-      {item.segmentConfidences.length > 0 && (
+      {item.roi.recognition_mode !== 'digit_crnn' && item.segmentConfidences.length > 0 && (
         <div className="roi-card-seg-confs">
           {item.segmentConfidences.map((c, i) => {
             const pct = Math.round(c * 100)
