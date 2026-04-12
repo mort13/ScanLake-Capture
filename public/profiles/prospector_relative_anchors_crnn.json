@@ -576,21 +576,21 @@
         {
           "name": "scan",
           "template_path": "prospector_scan.jpg",
-          "match_threshold": 0.7,
+          "match_threshold": 0.5,
           "ref_x": 16.0,
           "ref_y": 20.0
         },
         {
           "name": "cargo",
           "template_path": "prospector_cargo.jpg",
-          "match_threshold": 0.7,
+          "match_threshold": 0.5,
           "ref_x": 15.0,
           "ref_y": 477.0
         },
         {
           "name": "auto",
           "template_path": "prospector_auto.jpg",
-          "match_threshold": 0.7,
+          "match_threshold": 0.5,
           "ref_x": 180.0,
           "ref_y": 436.0
         }

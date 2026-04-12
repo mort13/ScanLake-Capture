@@ -328,6 +328,31 @@ label {
 .hotkey-bind-btn.listening { border-color: var(--accent); background: color-mix(in srgb, var(--accent) 15%, var(--bg-card)); color: var(--accent); }
 .modal-actions { display: flex; gap: 8px; margin-top: 20px; }
 
+/* About Modal */
+.about-modal { max-width: 560px; max-height: 80vh; overflow-y: auto; }
+.about-tagline { color: var(--text-dim); font-size: 0.9rem; margin-bottom: 4px; }
+.about-steps {
+  list-style: decimal;
+  padding-left: 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  font-size: 0.9rem;
+  color: var(--text-dim);
+}
+.about-steps li { padding-left: 4px; }
+.about-steps strong { color: var(--text); }
+.about-steps em { color: var(--primary); font-style: normal; }
+.about-tips {
+  list-style: disc;
+  padding-left: 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  font-size: 0.875rem;
+  color: var(--text-dim);
+}
+
 /* Setup */
 .setup-prompt {
   text-align: center;
