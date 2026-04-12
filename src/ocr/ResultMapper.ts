@@ -28,6 +28,9 @@ export function mapResultsToForm(
     return ''
   }
 
+  // Like get(), but strips a trailing % sign (amounts, resistance)
+  const getNumeric = (key: string): string => get(key).replace(/%$/, '')
+
   // Detect the top-level wrapper prefix (new schema wraps everything under "scan")
   const firstKey = flat.keys().next().value as string | undefined
   const prefix = firstKey?.startsWith('scan.') ? 'scan.' : ''
@@ -38,7 +41,7 @@ export function mapResultsToForm(
   if (deposit) confidences.set('deposit', confidences.get(`${prefix}deposit_name`) ?? confidences.get(`${prefix}deposit`) ?? 0)
 
   const mass = get(`${prefix}mass`)
-  const resistance = get(`${prefix}resistance`)
+  const resistance = getNumeric(`${prefix}resistance`)
   const instability = get(`${prefix}instability`)
   const volume = get(`${prefix}volume`)
 
@@ -53,7 +56,7 @@ export function mapResultsToForm(
     }
     const materialType = nameConf >= CONFIDENCE_THRESHOLD ? fuzzyMatch(rawName, MATERIAL_TYPES as unknown as string[]) : ''
 
-    const amount = get(`${base}.amount`)
+    const amount = getNumeric(`${base}.amount`)
     const quality = get(`${base}.quality`)
 
     if (materialType || amount || quality) {

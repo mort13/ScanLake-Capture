@@ -1,5 +1,5 @@
 {
-  "name": "mole_relative_anchors",
+  "name": "mole_relative_anchors_crnn",
   "profiles": {
     "scan_results": {
       "name": "scan_results",
@@ -622,6 +622,11 @@
           "profile": "scan_results",
           "roi": "inst",
           "key": "instability"
+        },
+        {
+          "profile": "scan_results",
+          "roi": "volume",
+          "key": "volume"
         },
         {
           "key": "composition",

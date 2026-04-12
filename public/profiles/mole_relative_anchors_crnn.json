@@ -1,5 +1,5 @@
 {
-  "name": "mole_relative_anchors",
+  "name": "mole_relative_anchors_crnn",
   "profiles": {
     "scan_results": {
       "name": "scan_results",
@@ -506,7 +506,8 @@
           "template_dir": "",
           "csv_index": 0,
           "ref_x": 12.0,
-          "ref_y": 287.0
+          "ref_y": 287.0,
+          "sub_anchor": "resistance_anchor"
         },
         {
           "name": "amount5",
@@ -623,6 +624,11 @@
           "key": "instability"
         },
         {
+          "profile": "scan_results",
+          "roi": "volume",
+          "key": "volume"
+        },
+        {
           "key": "composition",
           "type": "array",
           "children": [
@@ -716,8 +722,7 @@
               "children": [
                 {
                   "profile": "scan_results",
-                  "roi": "material5",
-                  "key": "name"
+                  "roi": "material5"
                 },
                 {
                   "profile": "scan_results",
