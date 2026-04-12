@@ -8,6 +8,11 @@ export interface UserProfile {
 export interface UserSettings {
   autoArchive: boolean
   autoDownload: boolean
+  hotkeys: {
+    capture: string
+    save: string
+    newCluster: string
+  }
 }
 
 export type SessionStatus = 'active' | 'closed' | 'archived'

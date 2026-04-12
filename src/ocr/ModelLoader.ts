@@ -1,19 +1,19 @@
 import * as ort from 'onnxruntime-web'
 import type { ModelMeta } from './types'
 
-let digitSession: ort.InferenceSession | null = null
+let crnnSession: ort.InferenceSession | null = null
 let wordSession: ort.InferenceSession | null = null
-let digitMeta: ModelMeta | null = null
+let crnnMeta: ModelMeta | null = null
 let wordMeta: ModelMeta | null = null
 
 // Configure onnxruntime-web WASM paths
 ort.env.wasm.wasmPaths = 'https://cdn.jsdelivr.net/npm/onnxruntime-web/dist/'
 
-export async function getDigitMeta(): Promise<ModelMeta> {
-  if (digitMeta) return digitMeta
-  const resp = await fetch('/models/digit_cnn.json')
-  digitMeta = (await resp.json()) as ModelMeta
-  return digitMeta
+export async function getCrnnMeta(): Promise<ModelMeta> {
+  if (crnnMeta) return crnnMeta
+  const resp = await fetch('/models/digit_crnn.json')
+  crnnMeta = (await resp.json()) as ModelMeta
+  return crnnMeta
 }
 
 export async function getWordMeta(): Promise<ModelMeta> {
@@ -23,17 +23,13 @@ export async function getWordMeta(): Promise<ModelMeta> {
   return wordMeta
 }
 
-export async function getDigitSession(): Promise<ort.InferenceSession> {
-  if (digitSession) return digitSession
-  const [modelBuffer, dataBuffer] = await Promise.all([
-    fetch('/models/digit_cnn.onnx').then(r => r.arrayBuffer()),
-    fetch('/models/digit_cnn.onnx.data').then(r => r.arrayBuffer()),
-  ])
-  digitSession = await ort.InferenceSession.create(modelBuffer, {
+export async function getCrnnSession(): Promise<ort.InferenceSession> {
+  if (crnnSession) return crnnSession
+  const modelBuffer = await fetch('/models/digit_crnn.onnx').then(r => r.arrayBuffer())
+  crnnSession = await ort.InferenceSession.create(modelBuffer, {
     executionProviders: ['wasm'],
-    externalData: [{ path: 'digit_cnn.onnx.data', data: dataBuffer }],
   })
-  return digitSession
+  return crnnSession
 }
 
 export async function getWordSession(): Promise<ort.InferenceSession> {
@@ -50,5 +46,5 @@ export async function getWordSession(): Promise<ort.InferenceSession> {
 }
 
 export async function preloadModels(): Promise<void> {
-  await Promise.all([getDigitSession(), getWordSession(), getDigitMeta(), getWordMeta()])
+  await Promise.all([getCrnnSession(), getWordSession(), getCrnnMeta(), getWordMeta()])
 }

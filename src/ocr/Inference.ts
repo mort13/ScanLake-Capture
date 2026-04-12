@@ -1,7 +1,14 @@
 import * as ort from 'onnxruntime-web'
 import type { RoiConfig, RoiResult } from './types'
-import { getDigitSession, getWordSession, getDigitMeta, getWordMeta } from './ModelLoader'
-import { segmentCharacters, prepareModelInput, prepareCharInput } from './CharSegmenter'
+import { getCrnnSession, getWordSession, getCrnnMeta, getWordMeta } from './ModelLoader'
+import { prepareModelInput } from './CharSegmenter'
+import {
+  greedyCTCDecode,
+  indicesToText,
+  computeConfidence,
+  validateFormat,
+  preprocessForCrnn,
+} from './CrnnDecoder'
 
 /**
  * Run inference on a single ROI image and return the recognized text + confidence.
@@ -12,8 +19,8 @@ export async function recognizeRoi(
 ): Promise<RoiResult> {
   if (roi.recognition_mode === 'word_cnn') {
     return recognizeWord(roiImage, roi)
-  } else if (roi.recognition_mode === 'cnn') {
-    return recognizeChars(roiImage, roi)
+  } else if (roi.recognition_mode === 'digit_crnn') {
+    return recognizeCrnn(roiImage, roi)
   }
   // template mode not implemented for web yet
   return { roiName: roi.name, text: '', confidence: 0 }
@@ -68,75 +75,49 @@ async function recognizeWord(
   }
 }
 
-/** Recognize individual characters using digit_cnn model */
-async function recognizeChars(
+/** Recognize a digit sequence using the CRNN model with CTC decoding */
+async function recognizeCrnn(
   roiImage: ImageData,
   roi: RoiConfig,
 ): Promise<RoiResult> {
-  const session = await getDigitSession()
-  const meta = await getDigitMeta()
-  const segments = segmentCharacters(roiImage, roi)
+  const session = await getCrnnSession()
+  const meta = await getCrnnMeta()
+  const timeSteps = meta.timeSteps ?? 64
+  const blankIdx = meta.blankIdx ?? 0
 
-  const CHAR_THRESHOLD = 0.75
-  let totalText = ''
-  const segmentConfidences: number[] = []
-  const contributingConfs: number[] = []
-
-  for (const seg of segments) {
-    const input = prepareCharInput(seg)
-    // DigitCNN takes 28×28 input
-    const tensor = new ort.Tensor('float32', input, [1, 1, 28, 28])
-    const inputName = session.inputNames[0]
-    const results = await session.run({ [inputName]: tensor })
-    const output = results[session.outputNames[0]]
-    const probs = output.data as Float32Array
-
-    // Get best prediction (possibly filtered by allowed_chars)
-    const { char, confidence } = bestPrediction(probs, meta.charClasses, roi.allowed_chars)
-    segmentConfidences.push(confidence)
-
-    if (confidence >= CHAR_THRESHOLD) {
-      totalText += char
-      contributingConfs.push(confidence)
-    }
-    // Below threshold: skip this segment (likely empty space)
+  // Preprocess: autocrop + resize to 32×256
+  const input = preprocessForCrnn(roiImage)
+  if (!input) {
+    // Low contrast — skip
+    return { roiName: roi.name, text: '', confidence: 0 }
   }
 
-  const overallConfidence = contributingConfs.length > 0
-    ? contributingConfs.reduce((a, b) => a + b, 0) / contributingConfs.length
-    : 0
+  // Input: (1, 1, 32, 256)
+  const tensor = new ort.Tensor('float32', input, [1, 1, 32, 256])
+  const inputName = session.inputNames[0]
+  const results = await session.run({ [inputName]: tensor })
+  const output = results[session.outputNames[0]]
+  const logProbs = output.data as Float32Array
+
+  // Greedy CTC decode
+  const decodedIndices = greedyCTCDecode(logProbs, timeSteps, meta.numClasses, blankIdx)
+  const text = indicesToText(decodedIndices, meta.charClasses)
+  const confidence = computeConfidence(logProbs, timeSteps, meta.numClasses, blankIdx)
+
+  // Format validation: reject invalid sequences
+  if (text && !validateFormat(text, roi.format_pattern, meta)) {
+    return { roiName: roi.name, text: '', confidence: 0 }
+  }
+
+  const CRNN_THRESHOLD = 0.75
+  if (confidence < CRNN_THRESHOLD) {
+    return { roiName: roi.name, text: '', confidence }
+  }
 
   return {
     roiName: roi.name,
-    text: totalText,
-    confidence: overallConfidence,
-    segmentConfidences,
-  }
-}
-
-/** Get best prediction, optionally filtering by allowed chars */
-function bestPrediction(
-  probs: Float32Array,
-  charClasses: string,
-  allowedChars: string,
-): { char: string; confidence: number } {
-  let bestIdx = 0
-  let bestVal = -Infinity
-
-  for (let i = 0; i < charClasses.length && i < probs.length; i++) {
-    if (allowedChars && !allowedChars.includes(charClasses[i])) continue
-    if (probs[i] > bestVal) {
-      bestVal = probs[i]
-      bestIdx = i
-    }
-  }
-
-  // Softmax confidence for the winning class
-  const conf = softmaxMax(probs, 0, Math.min(charClasses.length, probs.length))
-
-  return {
-    char: bestIdx < charClasses.length ? charClasses[bestIdx] : '?',
-    confidence: conf,
+    text,
+    confidence,
   }
 }
 

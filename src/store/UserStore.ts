@@ -23,12 +23,19 @@ function saveProfile(profile: UserProfile): void {
   localStorage.setItem(PROFILE_KEY, JSON.stringify(profile))
 }
 
+const DEFAULT_HOTKEYS = { capture: 'F9', save: 'F10', newCluster: 'F11' }
+
 function loadSettings(): UserSettings {
   const stored = localStorage.getItem(SETTINGS_KEY)
   if (stored) {
-    return JSON.parse(stored) as UserSettings
+    const parsed = JSON.parse(stored) as UserSettings
+    // Backfill hotkeys for existing saves that predate this field
+    if (!parsed.hotkeys) {
+      parsed.hotkeys = { ...DEFAULT_HOTKEYS }
+    }
+    return parsed
   }
-  return { autoArchive: false, autoDownload: false }
+  return { autoArchive: false, autoDownload: false, hotkeys: { ...DEFAULT_HOTKEYS } }
 }
 
 function saveSettings(settings: UserSettings): void {

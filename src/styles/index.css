@@ -321,6 +321,11 @@ label {
 .settings-section.danger { border-top: 1px solid var(--danger); padding-top: 12px; margin-top: 4px; }
 .settings-section.danger h3 { color: var(--danger); }
 .small-text { font-size: 0.78rem; color: var(--text-dim); }
+.hotkey-row { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+.hotkey-label { font-size: 0.9rem; color: var(--text-dim); }
+.hotkey-bind-btn { min-width: 90px; padding: 4px 12px; font-size: 0.9rem; font-family: monospace; background: var(--bg-card); border: 1px solid var(--border); border-radius: 4px; color: var(--text); cursor: pointer; text-align: center; transition: border-color 0.15s, background 0.15s; }
+.hotkey-bind-btn:hover { border-color: var(--accent); }
+.hotkey-bind-btn.listening { border-color: var(--accent); background: color-mix(in srgb, var(--accent) 15%, var(--bg-card)); color: var(--accent); }
 .modal-actions { display: flex; gap: 8px; margin-top: 20px; }
 
 /* Setup */

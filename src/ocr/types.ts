@@ -24,7 +24,7 @@ export interface RoiConfig {
   format_pattern: string
   dot_width: number
   enabled: boolean
-  recognition_mode: 'cnn' | 'word_cnn' | 'template'
+  recognition_mode: 'digit_crnn' | 'word_cnn' | 'template'
   template_dir: string
   csv_index: number
   ref_x: number
@@ -118,4 +118,10 @@ export interface ModelMeta {
   valAccuracy: number
   /** Word-class label list for word_cnn — populated by re-export or runtime detection */
   wordClasses?: string[]
+  /** CRNN-specific fields */
+  modelType?: 'crnn' | 'cnn'
+  outputShape?: number[]
+  timeSteps?: number
+  blankIdx?: number
+  formats?: Record<string, string>
 }

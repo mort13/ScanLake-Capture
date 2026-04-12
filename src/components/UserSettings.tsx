@@ -7,18 +7,33 @@ interface Props {
   onClose: () => void
 }
 
+type HotkeyField = 'capture' | 'save' | 'newCluster'
+
 export function UserSettings({ open, onClose }: Props) {
   const [profile, setProfile] = useState<UserProfile>(UserStore.loadProfile)
   const [settings, setSettings] = useState<UserSettingsType>(UserStore.loadSettings)
   const [saved, setSaved] = useState(false)
+  const [listeningFor, setListeningFor] = useState<HotkeyField | null>(null)
 
   useEffect(() => {
     if (open) {
       setProfile(UserStore.loadProfile())
       setSettings(UserStore.loadSettings())
       setSaved(false)
+      setListeningFor(null)
     }
   }, [open])
+
+  useEffect(() => {
+    if (!listeningFor) return
+    function onKeyDown(e: KeyboardEvent) {
+      e.preventDefault()
+      setSettings(s => ({ ...s, hotkeys: { ...s.hotkeys, [listeningFor!]: e.key } }))
+      setListeningFor(null)
+    }
+    window.addEventListener('keydown', onKeyDown)
+    return () => window.removeEventListener('keydown', onKeyDown)
+  }, [listeningFor])
 
   function handleSave() {
     UserStore.saveProfile(profile)
@@ -80,6 +95,26 @@ export function UserSettings({ open, onClose }: Props) {
           </label>
         </div>
 
+        <div className="settings-section">
+          <h3>Hotkeys</h3>
+          {(['capture', 'save', 'newCluster'] as HotkeyField[]).map(field => {
+            const labels: Record<HotkeyField, string> = { capture: 'Capture', save: 'Save Scan', newCluster: 'New Cluster' }
+            const isListening = listeningFor === field
+            return (
+              <div key={field} className="hotkey-row">
+                <span className="hotkey-label">{labels[field]}</span>
+                <button
+                  type="button"
+                  className={`hotkey-bind-btn${isListening ? ' listening' : ''}`}
+                  onClick={() => setListeningFor(isListening ? null : field)}
+                >
+                  {isListening ? 'Press any key…' : settings.hotkeys[field]}
+                </button>
+              </div>
+            )
+          })}
+        </div>
+
         <div className="settings-section danger">
           <h3>Danger Zone</h3>
           <button onClick={handleClearCache} className="btn-danger">
@@ -98,3 +133,4 @@ export function UserSettings({ open, onClose }: Props) {
     </div>
   )
 }
+
