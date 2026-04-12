@@ -5,7 +5,7 @@ const anchorImages = new Map<string, ImageData>()
 
 export async function loadProfile(): Promise<MasterProfile> {
   if (cachedProfile) return cachedProfile
-  const resp = await fetch('/profiles/mole_relative_anchors.json')
+  const resp = await fetch('/profiles/mole_relative_anchors_crnn.json')
   if (!resp.ok) throw new Error(`Failed to load profile: ${resp.status}`)
   cachedProfile = (await resp.json()) as MasterProfile
   return cachedProfile

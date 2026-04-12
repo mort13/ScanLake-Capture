@@ -134,13 +134,17 @@ export function ScanForm({ session, onSessionUpdated }: Props) {
   }
 
   function updateField(field: keyof ScanFormData, value: string) {
-    setForm(f => ({ ...f, [field]: value }))
+    const numericFields: (keyof ScanFormData)[] = ['mass', 'resistance', 'instability', 'volume']
+    const v = numericFields.includes(field) ? value.replace(/,/g, '.') : value
+    setForm(f => ({ ...f, [field]: v }))
   }
 
   function updateMaterial(index: number, field: keyof MaterialFormRow, value: string) {
+    const numericFields: (keyof MaterialFormRow)[] = ['amount', 'quality']
+    const v = numericFields.includes(field) ? value.replace(/,/g, '.') : value
     setForm(f => {
       const mats = [...f.materials]
-      mats[index] = { ...mats[index], [field]: value }
+      mats[index] = { ...mats[index], [field]: v }
       return { ...f, materials: mats }
     })
   }
@@ -186,7 +190,8 @@ export function ScanForm({ session, onSessionUpdated }: Props) {
     if (!validation.valid) return
 
     const captureId = uuidv4()
-    const volume = parseFloat(form.volume)
+    const norm = (s: string) => s.replace(/,/g, '.')
+    const volume = parseFloat(norm(form.volume))
     const scan: Scan = {
       captureId,
       sessionId: session.sessionId,
@@ -201,24 +206,24 @@ export function ScanForm({ session, onSessionUpdated }: Props) {
       place: 'none',
       deposit: form.deposit,
       depositConf: 1.0,
-      mass: parseInt(form.mass, 10),
+      mass: parseInt(norm(form.mass), 10),
       massConf: 1.0,
-      resistance: parseInt(form.resistance, 10),
+      resistance: parseInt(norm(form.resistance), 10),
       resistanceConf: 1.0,
-      instability: parseFloat(form.instability),
+      instability: parseFloat(norm(form.instability)),
       instabilityConf: 1.0,
       volume,
       volumeConf: 1.0,
     }
 
     const materials: Material[] = completeRows.map((r, i) => {
-      const amount = Math.round(parseFloat(r.amount) * 100) / 100
+      const amount = Math.round(parseFloat(norm(r.amount)) * 100) / 100
       return {
         captureId,
         matIndex: i,
         type: r.type,
         amount,
-        quality: parseInt(r.quality, 10),
+        quality: parseInt(norm(r.quality), 10),
         materialVolume: Math.round((volume * amount / 100) * 100) / 100,
         minConfidence: 1.0,
       }
