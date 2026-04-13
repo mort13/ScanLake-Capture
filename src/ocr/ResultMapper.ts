@@ -69,7 +69,7 @@ export function mapResultsToForm(
   }
 
   return {
-    formData: { deposit, mass, resistance, instability, volume, materials },
+    formData: { deposit, region: '', mass, resistance, instability, volume, materials },
     confidences,
   }
 }
