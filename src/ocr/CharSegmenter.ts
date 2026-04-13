@@ -126,29 +126,43 @@ export function prepareModelInput(image: ImageData): Float32Array | null {
   const TARGET_W = 256
   const TARGET_H = 32
 
-  // Create source canvas with the grayscale image
+  // Build a grayscale ImageData from the already-computed gray array so that
+  // drawImage interpolates in grayscale — matching Python which converts to
+  // uint8 gray first, then calls cv2.resize on the single-channel array.
+  const grayU8 = new Uint8ClampedArray(w * h * 4)
+  for (let i = 0; i < w * h; i++) {
+    const v = Math.round(gray[i])
+    grayU8[i * 4]     = v
+    grayU8[i * 4 + 1] = v
+    grayU8[i * 4 + 2] = v
+    grayU8[i * 4 + 3] = 255
+  }
   const srcCanvas = new OffscreenCanvas(w, h)
   const srcCtx = srcCanvas.getContext('2d')!
-  srcCtx.putImageData(image, 0, 0)
+  srcCtx.putImageData(new ImageData(grayU8, w, h), 0, 0)
 
   // Resize preserving aspect ratio
   const scale = Math.min(TARGET_W / crop.w, TARGET_H / crop.h)
   const dw = Math.round(crop.w * scale)
   const dh = Math.round(crop.h * scale)
-  const dy = Math.round((TARGET_H - dh) / 2)
+  // Python: y_off = (target_h - new_h) // 2  →  floor, not round
+  const dy = Math.floor((TARGET_H - dh) / 2)
 
   const outCanvas = new OffscreenCanvas(TARGET_W, TARGET_H)
   const outCtx = outCanvas.getContext('2d')!
+  // Use high-quality smoothing to approximate cv2.INTER_AREA (area averaging)
+  outCtx.imageSmoothingEnabled = true
+  outCtx.imageSmoothingQuality = 'high'
   outCtx.fillStyle = '#000'
   outCtx.fillRect(0, 0, TARGET_W, TARGET_H)
   // Left-aligned (dx=0), vertically centred
   outCtx.drawImage(srcCanvas, crop.x, crop.y, crop.w, crop.h, 0, dy, dw, dh)
 
-  // Convert to normalised grayscale Float32Array
+  // Extract normalised grayscale from the red channel (all channels are equal)
   const resized = outCtx.getImageData(0, 0, TARGET_W, TARGET_H)
   const float32 = new Float32Array(TARGET_H * TARGET_W)
   for (let i = 0; i < TARGET_H * TARGET_W; i++) {
-    float32[i] = (0.299 * resized.data[i * 4] + 0.587 * resized.data[i * 4 + 1] + 0.114 * resized.data[i * 4 + 2]) / 255
+    float32[i] = resized.data[i * 4] / 255
   }
   return float32
 }

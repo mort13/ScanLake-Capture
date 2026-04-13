@@ -45,16 +45,20 @@ export function extractRoi(
   const x = Math.round(imgX)
   const y = Math.round(imgY)
 
-  // Bounds check
-  if (x < 0 || y < 0 || x + w > image.width || y + h > image.height) {
-    return null
-  }
+  // Clip to visible frame area — matches Python's slice_x1/y1/x2/y2 logic.
+  // A partially off-screen ROI is still processed (with the visible portion),
+  // not rejected outright.
+  const x1 = Math.max(0, x)
+  const y1 = Math.max(0, y)
+  const x2 = Math.min(image.width,  x + w)
+  const y2 = Math.min(image.height, y + h)
+  if (x1 >= x2 || y1 >= y2) return null
 
   // Extract sub-image via putImageData/getImageData
   const tempCanvas = new OffscreenCanvas(image.width, image.height)
   const tempCtx = tempCanvas.getContext('2d')!
   tempCtx.putImageData(new ImageData(new Uint8ClampedArray(image.data), image.width, image.height), 0, 0)
-  const roiData = tempCtx.getImageData(x, y, w, h)
+  const roiData = tempCtx.getImageData(x1, y1, x2 - x1, y2 - y1)
 
   // Apply filters (unless caller asked for the raw crop)
   return skipFilters ? roiData : applyFilters(roiData, roi.filters)
