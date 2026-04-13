@@ -114,7 +114,7 @@ async function recognizeCrnn(
     return { roiName: roi.name, text: '', confidence: 0 }
   }
 
-  const CRNN_THRESHOLD = 0.75
+  const CRNN_THRESHOLD = 0.5
   if (confidence < CRNN_THRESHOLD) {
     return { roiName: roi.name, text: '', confidence }
   }
