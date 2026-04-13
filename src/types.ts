@@ -78,6 +78,7 @@ export interface MaterialFormRow {
 
 export interface ScanFormData {
   deposit: string
+  region: string
   mass: string
   resistance: string
   instability: string

@@ -8,6 +8,7 @@ import { OcrStatus } from './OcrStatus'
 import { CaptureOverlay } from './CaptureOverlay'
 import { CapturePreview } from './CapturePreview'
 import { DEPOSIT_TYPES } from '../data/deposits'
+import { REGIONS_BY_GRAVITY_WELL } from '../data/regions'
 import { useSession } from '../store/SessionStore'
 import { IndexedDBCache } from '../store/IndexedDBCache'
 import { runPipeline } from '../ocr/OcrPipeline'
@@ -83,6 +84,7 @@ export function ScanForm({ session, onSessionUpdated }: Props) {
 
   const [form, setForm] = useState<ScanFormData>({
     deposit: '',
+    region: '',
     mass: '',
     resistance: '',
     instability: '',
@@ -202,7 +204,7 @@ export function ScanForm({ session, onSessionUpdated }: Props) {
       timestamp: new Date().toISOString(),
       system: session.system,
       gravityWell: session.gravityWell,
-      region: 'none',
+      region: form.region.trim() || 'none',
       place: 'none',
       deposit: form.deposit,
       depositConf: 1.0,
@@ -234,6 +236,7 @@ export function ScanForm({ session, onSessionUpdated }: Props) {
     // Reset form but keep deposit if same cluster
     setForm({
       deposit: clusterDeposit || form.deposit,
+      region: form.region,
       mass: '',
       resistance: '',
       instability: '',
@@ -355,7 +358,7 @@ export function ScanForm({ session, onSessionUpdated }: Props) {
         <OcrStatus status={ocrStatus} message={ocrMessage} confidence={ocrConfidence} />
         <div className="ocr-buttons">
           <button type="button" onClick={() => setShowOverlay(true)} className="btn-sm">
-            {captureRegion ? 'Change Region' : 'Select Region'}
+            {captureRegion ? 'Change OCR Region' : 'Select OCR Region'}
           </button>
           <button type="button" onClick={handlePreviewCapture} className="btn-sm"
             disabled={!captureRegion || previewLoading || ocrStatus === 'capturing' || ocrStatus === 'processing'}>
@@ -389,6 +392,15 @@ export function ScanForm({ session, onSessionUpdated }: Props) {
             value={form.deposit}
             onChange={v => updateField('deposit', v)}
             placeholder="Deposit type"
+          />
+        </label>
+        <label>
+          Region
+          <Autocomplete
+            suggestions={REGIONS_BY_GRAVITY_WELL[session.gravityWell] ?? []}
+            value={form.region}
+            onChange={v => updateField('region', v)}
+            placeholder="Region (optional)"
           />
         </label>
         <label>
