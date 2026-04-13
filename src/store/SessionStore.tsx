@@ -86,7 +86,7 @@ function buildClusterDepositsMap(scans: Scan[]): Record<string, string> {
 
 interface SessionContextValue {
   state: SessionState
-  createSession: (system: string, gravityWell: string) => Promise<Session>
+  createSession: (system: string, gravityWell: string, region: string) => Promise<Session>
   openSession: (sessionId: string) => Promise<void>
   closeActiveView: () => void
   addScan: (scan: Scan, materials: Material[]) => Promise<void>
@@ -114,7 +114,7 @@ export function SessionProvider({ children }: { children: ReactNode }) {
     })
   }, [])
 
-  const createSession = useCallback(async (system: string, gravityWell: string) => {
+  const createSession = useCallback(async (system: string, gravityWell: string, region: string) => {
     const profile = UserStore.loadProfile()
     const session: Session = {
       sessionId: uuidv4(),
@@ -123,6 +123,7 @@ export function SessionProvider({ children }: { children: ReactNode }) {
       org: profile.org,
       system,
       gravityWell,
+      region,
       createdAt: new Date().toISOString(),
       status: 'active',
       scanCount: 0,

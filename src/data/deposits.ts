@@ -24,7 +24,7 @@ export const DEPOSIT_TYPES = [
   'torite',
   'ouratite',
   'corundum',
-  'aluminum',
+  'aluminum'
 ] as const
 
 export const SYSTEMS = [

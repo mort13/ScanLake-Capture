@@ -27,6 +27,7 @@ export interface Session {
   org: string
   system: string
   gravityWell: string
+  region: string
   createdAt: string // ISO 8601 UTC
   status: SessionStatus
   scanCount: number

@@ -84,7 +84,7 @@ export function ScanForm({ session, onSessionUpdated }: Props) {
 
   const [form, setForm] = useState<ScanFormData>({
     deposit: '',
-    region: '',
+    region: session.region || '',
     mass: '',
     resistance: '',
     instability: '',

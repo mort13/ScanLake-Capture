@@ -11,6 +11,7 @@ interface Props {
 }
 
 export function MaterialRow({ row, index, onChange, onRemove, isPartial }: Props) {
+  const missing = (val: string) => isPartial && val === '' ? 'missing' : ''
   return (
     <div className={`material-row ${isPartial ? 'partial' : ''}`}>
       <span className="mat-index">#{index}</span>
@@ -19,7 +20,7 @@ export function MaterialRow({ row, index, onChange, onRemove, isPartial }: Props
         value={row.type}
         onChange={v => onChange(index, 'type', v)}
         placeholder="Type"
-        className="mat-type"
+        className={`mat-type ${missing(row.type)}`}
       />
       <input
         type="number"
@@ -29,7 +30,7 @@ export function MaterialRow({ row, index, onChange, onRemove, isPartial }: Props
         value={row.amount}
         onChange={e => onChange(index, 'amount', e.target.value)}
         placeholder="Amount %"
-        className="mat-amount"
+        className={`mat-amount ${missing(row.amount)}`}
       />
       <input
         type="number"
@@ -38,7 +39,7 @@ export function MaterialRow({ row, index, onChange, onRemove, isPartial }: Props
         value={row.quality}
         onChange={e => onChange(index, 'quality', e.target.value)}
         placeholder="Quality"
-        className="mat-quality"
+        className={`mat-quality ${missing(row.quality)}`}
       />
       <button type="button" className="btn-icon" onClick={() => onRemove(index)} title="Remove row">
         &times;

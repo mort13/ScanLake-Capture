@@ -216,7 +216,10 @@ label {
   align-items: center;
   padding: 4px 0;
 }
-.material-row.partial { opacity: 0.5; }
+.material-row.partial .missing,
+.material-row.partial .missing input { border-color: orange; }
+.material-row.partial .missing input::placeholder,
+.material-row.partial .missing::placeholder { color: orange; opacity: 1; }
 .mat-index { font-size: 0.75rem; color: var(--text-dim); text-align: center; }
 .mat-volume-calc { font-size: 0.8rem; color: var(--text-dim); text-align: right; }
 

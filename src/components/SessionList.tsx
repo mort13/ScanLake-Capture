@@ -6,6 +6,7 @@ import { buildScansParquet, buildCompositionsParquet, downloadBlob } from '../se
 import type { Material } from '../types'
 import { Autocomplete } from './Autocomplete'
 import { SYSTEMS, GRAVITY_WELLS } from '../data/deposits'
+import { REGIONS_BY_GRAVITY_WELL } from '../data/regions'
 
 interface Props {
   onOpenSession: (sessionId: string) => void
@@ -16,14 +17,16 @@ export function SessionList({ onOpenSession }: Props) {
   const [showCreate, setShowCreate] = useState(false)
   const [system, setSystem] = useState('')
   const [gravityWell, setGravityWell] = useState('')
+  const [region, setRegion] = useState('')
   const [deleteConfirm, setDeleteConfirm] = useState<string | null>(null)
 
   async function handleCreate() {
     if (!system || !gravityWell) return
-    const session = await createSession(system, gravityWell)
+    const session = await createSession(system, gravityWell, region)
     setShowCreate(false)
     setSystem('')
     setGravityWell('')
+    setRegion('')
     onOpenSession(session.sessionId)
   }
 
@@ -60,6 +63,7 @@ export function SessionList({ onOpenSession }: Props) {
         <div className="create-session">
           <Autocomplete suggestions={SYSTEMS} value={system} onChange={setSystem} placeholder="System" />
           <Autocomplete suggestions={gwOptions} value={gravityWell} onChange={setGravityWell} placeholder="Gravity Well" />
+          <Autocomplete suggestions={REGIONS_BY_GRAVITY_WELL[gravityWell] ?? []} value={region} onChange={setRegion} placeholder="Region (optional)" />
           <button onClick={handleCreate} className="btn-primary" disabled={!system || !gravityWell}>
             Create
           </button>
