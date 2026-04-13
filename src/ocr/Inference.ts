@@ -68,7 +68,7 @@ async function recognizeWord(
   }
 
   // Below confidence threshold → treat as unrecognized
-  const WORD_THRESHOLD = 0.75
+  const WORD_THRESHOLD = 0.5
   if (confidence < WORD_THRESHOLD) {
     return { roiName: roi.name, text: '', confidence }
   }
