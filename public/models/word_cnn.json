@@ -6,8 +6,6 @@
     32,
     256
   ],
-  "valAccuracy": 0.9988951632703167,
-  "charClasses": "",
   "wordClasses": [
     "agricium",
     "aphorite",
@@ -36,5 +34,6 @@
     "titanium",
     "torite",
     "tungsten"
-  ]
+  ],
+  "valAccuracy": 0.9988951632703167
 }
