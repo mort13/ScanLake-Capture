@@ -20,6 +20,8 @@ import type { Session, Scan, Material, MaterialFormRow, ScanFormData, Validation
 interface Props {
   session: Session
   onSessionUpdated: (session: Session) => void
+  preloadedScan?: { scan: Scan; materials: Material[] } | null
+  onPreloadConsumed?: () => void
 }
 
 const EMPTY_MATERIAL: MaterialFormRow = { type: '', amount: '', quality: '' }
@@ -76,7 +78,7 @@ function validate(form: ScanFormData, _session: Session, getClusterDeposit: (id:
   return { valid: errors.length === 0, errors }
 }
 
-export function ScanForm({ session, onSessionUpdated }: Props) {
+export function ScanForm({ session, onSessionUpdated, preloadedScan, onPreloadConsumed }: Props) {
   const { addScan, getClusterDeposit, state } = useSession()
   const [hotkeys, setHotkeys] = useState(() => UserStore.loadSettings().hotkeys)
   const [clusterId, setClusterId] = useState(session.clusterHistory[session.clusterHistory.length - 1])
@@ -93,6 +95,25 @@ export function ScanForm({ session, onSessionUpdated }: Props) {
   })
 
   const [showErrors, setShowErrors] = useState(false)
+
+  // Load data from a previously saved scan into the form
+  useEffect(() => {
+    if (!preloadedScan) return
+    const { scan, materials } = preloadedScan
+    setForm({
+      deposit: scan.deposit,
+      region: scan.region === 'none' ? '' : scan.region,
+      mass: String(scan.mass),
+      resistance: String(scan.resistance),
+      instability: String(scan.instability),
+      volume: String(scan.volume),
+      materials: materials.length > 0
+        ? materials.map(m => ({ type: m.type, amount: String(m.amount), quality: String(m.quality) }))
+        : [{ ...EMPTY_MATERIAL }],
+    })
+    setShowErrors(false)
+    onPreloadConsumed?.()
+  }, [preloadedScan]) // eslint-disable-line react-hooks/exhaustive-deps
 
   // OCR state
   const [ocrStatus, setOcrStatus] = useState<OcrStatusType>('idle')
@@ -392,6 +413,7 @@ export function ScanForm({ session, onSessionUpdated }: Props) {
             value={form.deposit}
             onChange={v => updateField('deposit', v)}
             placeholder="Deposit type"
+            className={!form.deposit ? 'empty-warning' : ''}
           />
         </label>
         <label>
@@ -406,7 +428,8 @@ export function ScanForm({ session, onSessionUpdated }: Props) {
         <label>
           Mass
           <input type="number" step="1" min="0" value={form.mass}
-            onChange={e => updateField('mass', e.target.value)} placeholder="Mass (int)" />
+            onChange={e => updateField('mass', e.target.value)} placeholder="Mass (int)"
+            style={!form.mass ? { borderColor: 'var(--warning)' } : undefined} />
         </label>
         <label>
           Resistance
@@ -416,12 +439,14 @@ export function ScanForm({ session, onSessionUpdated }: Props) {
         <label>
           Instability
           <input type="number" step="0.01" min="0" value={form.instability}
-            onChange={e => updateField('instability', e.target.value)} placeholder="Instability" />
+            onChange={e => updateField('instability', e.target.value)} placeholder="Instability"
+            style={!form.instability && form.instability !== '0' ? { borderColor: 'var(--warning)' } : undefined} />
         </label>
         <label>
           Volume
           <input type="number" step="0.01" min="0" value={form.volume}
-            onChange={e => updateField('volume', e.target.value)} placeholder="Volume" />
+            onChange={e => updateField('volume', e.target.value)} placeholder="Volume"
+            style={!form.volume ? { borderColor: 'var(--warning)' } : undefined} />
         </label>
       </div>
 

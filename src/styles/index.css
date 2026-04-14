@@ -226,6 +226,7 @@ label {
 /* Autocomplete */
 .autocomplete { position: relative; }
 .autocomplete input { width: 100%; }
+.autocomplete.empty-warning input { border-color: var(--warning); }
 .autocomplete-dropdown {
   position: absolute;
   top: 100%;

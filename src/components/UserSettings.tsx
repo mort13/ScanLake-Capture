@@ -177,6 +177,7 @@ export function UserSettings({ open, onClose }: Props) {
             Clear All Cache
           </button>
           <p className="small-text">Clears all sessions, scans, and your User ID from localStorage and IndexedDB.</p>
+          <p className="small-text">Cache size estimate: ~100 scans ≈ 0.2–0.5 MB — store thousands of scans locally before closing the session.</p>
         </div>
 
         <div className="modal-actions">

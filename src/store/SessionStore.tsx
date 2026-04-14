@@ -3,10 +3,7 @@ import { v4 as uuidv4 } from 'uuid'
 import { IndexedDBCache } from './IndexedDBCache'
 import { UserStore } from './UserStore'
 import { buildScansParquet, buildCompositionsParquet, downloadBlob } from '../services/ParquetExporter'
-import { uploadBatch } from '../services/UploadService'
 import type { Session, Scan, Material } from '../types'
-
-const BATCH_SIZE = 50
 
 interface SessionState {
   sessions: Session[]
@@ -24,7 +21,6 @@ type Action =
   | { type: 'SESSION_REMOVED'; sessionId: string }
   | { type: 'SET_ACTIVE'; sessionId: string | null; scans: Scan[]; materials: Record<string, Material[]> }
   | { type: 'SCAN_ADDED'; scan: Scan; materials: Material[] }
-  | { type: 'BATCH_FLUSHED'; captureIds: string[] }
 
 function reducer(state: SessionState, action: Action): SessionState {
   switch (action.type) {
@@ -62,14 +58,6 @@ function reducer(state: SessionState, action: Action): SessionState {
           ...state.clusterDeposits,
           [action.scan.clusterId]: action.scan.deposit,
         },
-      }
-    case 'BATCH_FLUSHED':
-      return {
-        ...state,
-        scans: state.scans.filter(s => !action.captureIds.includes(s.captureId)),
-        materials: Object.fromEntries(
-          Object.entries(state.materials).filter(([id]) => !action.captureIds.includes(id))
-        ),
       }
     default:
       return state
@@ -163,61 +151,37 @@ export function SessionProvider({ children }: { children: ReactNode }) {
       }
       await IndexedDBCache.saveSession(updated)
       dispatch({ type: 'SESSION_UPDATED', session: updated })
-
-      // Check batch threshold
-      if (updated.pendingScans >= BATCH_SIZE) {
-        await flushBatch(updated, false)
-      }
     }
-  }, [state.sessions, state.scans, state.materials])
+  }, [state.sessions])
 
-  const flushBatch = useCallback(async (session: Session, isFinal: boolean) => {
+  const flushBatch = useCallback(async (session: Session) => {
     const profile = UserStore.loadProfile()
     const settings = UserStore.loadSettings()
     const scans = await IndexedDBCache.getScansForSession(session.sessionId)
     if (scans.length === 0) return
 
-    // Collect all materials for this batch
-    const allMaterials: Material[] = []
-    for (const scan of scans) {
-      const mats = await IndexedDBCache.getMaterialsForScan(scan.captureId)
-      allMaterials.push(...mats)
-    }
-
-    const scansBuffer = buildScansParquet(scans, profile)
-    const compsBuffer = buildCompositionsParquet(scans, allMaterials)
-    const batchNum = session.batchesUploaded + 1
-
     if (settings.autoDownload) {
+      const allMaterials: Material[] = []
+      for (const scan of scans) {
+        const mats = await IndexedDBCache.getMaterialsForScan(scan.captureId)
+        allMaterials.push(...mats)
+      }
+      const scansBuffer = buildScansParquet(scans, profile)
+      const compsBuffer = buildCompositionsParquet(scans, allMaterials)
+      const batchNum = session.batchesUploaded + 1
       downloadBlob(scansBuffer, `${profile.userId}_scans_${session.sessionId}_batch${batchNum}.parquet`)
       downloadBlob(compsBuffer, `${profile.userId}_compositions_${session.sessionId}_batch${batchNum}.parquet`)
     }
 
-    const uploaded = await uploadBatch({
-      userId: profile.userId,
-      sessionId: session.sessionId,
-      batchNumber: batchNum,
-      isFinal,
-      scansParquet: scansBuffer,
-      compositionsParquet: compsBuffer,
-    })
-
-    const captureIds = scans.map(s => s.captureId)
-    if (uploaded) {
-      await IndexedDBCache.deleteScans(captureIds)
-      dispatch({ type: 'BATCH_FLUSHED', captureIds })
-    }
-
     const updated: Session = {
       ...session,
-      batchesUploaded: batchNum,
       pendingScans: 0,
-      ...(isFinal ? { status: 'closed' as const } : {}),
+      status: 'closed',
     }
     await IndexedDBCache.saveSession(updated)
     dispatch({ type: 'SESSION_UPDATED', session: updated })
 
-    if (isFinal && uploaded && settings.autoArchive) {
+    if (settings.autoArchive) {
       await IndexedDBCache.deleteSession(session.sessionId)
       dispatch({ type: 'SESSION_REMOVED', sessionId: session.sessionId })
     }
@@ -226,7 +190,7 @@ export function SessionProvider({ children }: { children: ReactNode }) {
   const closeSession = useCallback(async (sessionId: string) => {
     const session = state.sessions.find(s => s.sessionId === sessionId)
     if (!session) return
-    await flushBatch(session, true)
+    await flushBatch(session)
   }, [state.sessions, flushBatch])
 
   const archiveSession = useCallback(async (sessionId: string) => {

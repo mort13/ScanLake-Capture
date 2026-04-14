@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react'
 import { useSession } from '../store/SessionStore'
 import { ScanForm } from './ScanForm'
 import { IndexedDBCache } from '../store/IndexedDBCache'
-import type { Session } from '../types'
+import type { Session, Scan, Material } from '../types'
 
 interface Props {
   sessionId: string
@@ -12,6 +12,7 @@ interface Props {
 export function SessionView({ sessionId, onBack }: Props) {
   const { state, openSession, closeActiveView, deleteSessionWithoutUploading } = useSession()
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false)
+  const [selectedScan, setSelectedScan] = useState<{ scan: Scan; materials: Material[] } | null>(null)
 
   useEffect(() => {
     openSession(sessionId)
@@ -52,7 +53,7 @@ export function SessionView({ sessionId, onBack }: Props) {
       )}
 
       {session.status === 'active' ? (
-        <ScanForm session={session} onSessionUpdated={handleSessionUpdated} />
+        <ScanForm session={session} onSessionUpdated={handleSessionUpdated} preloadedScan={selectedScan} onPreloadConsumed={() => setSelectedScan(null)} />
       ) : (
         <p>This session is {session.status}. No more scans can be added.</p>
       )}
@@ -68,6 +69,7 @@ export function SessionView({ sessionId, onBack }: Props) {
                 <th>Mass</th>
                 <th>Vol</th>
                 <th>Cluster</th>
+                {session.status === 'active' && <th></th>}
               </tr>
             </thead>
             <tbody>
@@ -78,6 +80,15 @@ export function SessionView({ sessionId, onBack }: Props) {
                   <td>{scan.mass}</td>
                   <td>{scan.volume}</td>
                   <td title={scan.clusterId}>{scan.clusterId.slice(0, 8)}</td>
+                  {session.status === 'active' && (
+                    <td>
+                      <button
+                        className="btn-sm"
+                        title="Load this scan's data into the form"
+                        onClick={() => setSelectedScan({ scan, materials: state.materials[scan.captureId] ?? [] })}
+                      >Load</button>
+                    </td>
+                  )}</tr>
                 </tr>
               ))}
             </tbody>
