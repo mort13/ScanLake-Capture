@@ -16,6 +16,8 @@ export interface UserSettings {
   selectedShipProfile: string
   /** Fixed capture resolution, e.g. "1920x1080". Empty / undefined = auto-detect. */
   captureResolution?: string
+  /** When true, listen for Chrome extension global hotkey events instead of local keydown. */
+  extensionHotkeys?: boolean
 }
 
 export type SessionStatus = 'active' | 'closed' | 'archived'

@@ -142,6 +142,16 @@ export function UserSettings({ open, onClose }: Props) {
 
         <div className="settings-section">
           <h3>Hotkeys</h3>
+          <label className="checkbox-label">
+            <input type="checkbox" checked={settings.extensionHotkeys ?? false}
+              onChange={e => setSettings(s => ({ ...s, extensionHotkeys: e.target.checked }))} />
+            Use Chrome Extension for global hotkeys
+          </label>
+          <p className="small-text">
+            Enable this if you have the ScanLake Hotkeys extension installed.
+            Hotkeys will work even when the game is focused.
+            Without the extension, hotkeys only work when this browser tab is active.
+          </p>
           {(['capture', 'save', 'newCluster'] as HotkeyField[]).map(field => {
             const labels: Record<HotkeyField, string> = { capture: 'Capture', save: 'Save Scan', newCluster: 'New Cluster' }
             const isListening = listeningFor === field

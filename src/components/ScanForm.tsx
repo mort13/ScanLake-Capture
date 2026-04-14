@@ -81,6 +81,7 @@ function validate(form: ScanFormData, _session: Session, getClusterDeposit: (id:
 export function ScanForm({ session, onSessionUpdated, preloadedScan, onPreloadConsumed }: Props) {
   const { addScan, updateScan, getClusterDeposit, state } = useSession()
   const [hotkeys, setHotkeys] = useState(() => UserStore.loadSettings().hotkeys)
+  const [extensionHotkeys, setExtensionHotkeys] = useState(() => UserStore.loadSettings().extensionHotkeys ?? false)
   const [clusterId, setClusterId] = useState(session.clusterHistory[session.clusterHistory.length - 1])
   const [clusterHistory, setClusterHistory] = useState([...session.clusterHistory])
 
@@ -345,15 +346,18 @@ export function ScanForm({ session, onSessionUpdated, preloadedScan, onPreloadCo
   useEffect(() => {
     function onStorage(e: StorageEvent) {
       if (e.key === 'scanlake_user_settings') {
-        setHotkeys(UserStore.loadSettings().hotkeys)
+        const s = UserStore.loadSettings()
+        setHotkeys(s.hotkeys)
+        setExtensionHotkeys(s.extensionHotkeys ?? false)
       }
     }
     window.addEventListener('storage', onStorage)
     return () => window.removeEventListener('storage', onStorage)
   }, [])
 
-  // Global key listeners (configurable)
+  // Local key listeners (when extension hotkeys are disabled)
   useEffect(() => {
+    if (extensionHotkeys) return
     function handleKeyDown(e: KeyboardEvent) {
       if (e.key === hotkeys.capture) {
         e.preventDefault()
@@ -368,7 +372,20 @@ export function ScanForm({ session, onSessionUpdated, preloadedScan, onPreloadCo
     }
     window.addEventListener('keydown', handleKeyDown)
     return () => window.removeEventListener('keydown', handleKeyDown)
-  }, [hotkeys, handleOcrCapture, newCluster])
+  }, [extensionHotkeys, hotkeys, handleOcrCapture, newCluster])
+
+  // Chrome extension global hotkey listener
+  useEffect(() => {
+    if (!extensionHotkeys) return
+    function handleExtensionHotkey(e: Event) {
+      const action = (e as CustomEvent<{ action: string }>).detail?.action
+      if (action === 'capture') handleOcrCapture()
+      else if (action === 'save') saveRef.current?.()
+      else if (action === 'newCluster') newCluster()
+    }
+    window.addEventListener('scanlake-hotkey', handleExtensionHotkey)
+    return () => window.removeEventListener('scanlake-hotkey', handleExtensionHotkey)
+  }, [extensionHotkeys, handleOcrCapture, newCluster])
 
   const handlePreviewCapture = useCallback(async () => {
     if (!captureRegion) { setShowOverlay(true); return }

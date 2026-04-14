@@ -43,9 +43,13 @@ function loadSettings(): UserSettings {
     if (parsed.captureResolution === undefined) {
       parsed.captureResolution = ''
     }
+    // Backfill extensionHotkeys for existing saves
+    if (parsed.extensionHotkeys === undefined) {
+      parsed.extensionHotkeys = false
+    }
     return parsed
   }
-  return { autoArchive: false, autoDownload: false, hotkeys: { ...DEFAULT_HOTKEYS }, selectedShipProfile: DEFAULT_SHIP_PROFILE, captureResolution: '' }
+  return { autoArchive: false, autoDownload: false, hotkeys: { ...DEFAULT_HOTKEYS }, selectedShipProfile: DEFAULT_SHIP_PROFILE, captureResolution: '', extensionHotkeys: false }
 }
 
 function saveSettings(settings: UserSettings): void {
