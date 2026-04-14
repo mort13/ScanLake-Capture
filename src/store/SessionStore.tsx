@@ -21,6 +21,7 @@ type Action =
   | { type: 'SESSION_REMOVED'; sessionId: string }
   | { type: 'SET_ACTIVE'; sessionId: string | null; scans: Scan[]; materials: Record<string, Material[]> }
   | { type: 'SCAN_ADDED'; scan: Scan; materials: Material[] }
+  | { type: 'SCAN_UPDATED'; scan: Scan; materials: Material[] }
 
 function reducer(state: SessionState, action: Action): SessionState {
   switch (action.type) {
@@ -59,6 +60,16 @@ function reducer(state: SessionState, action: Action): SessionState {
           [action.scan.clusterId]: action.scan.deposit,
         },
       }
+    case 'SCAN_UPDATED':
+      return {
+        ...state,
+        scans: state.scans.map(s => s.captureId === action.scan.captureId ? action.scan : s),
+        materials: { ...state.materials, [action.scan.captureId]: action.materials },
+        clusterDeposits: {
+          ...state.clusterDeposits,
+          [action.scan.clusterId]: action.scan.deposit,
+        },
+      }
     default:
       return state
   }
@@ -78,6 +89,7 @@ interface SessionContextValue {
   openSession: (sessionId: string) => Promise<void>
   closeActiveView: () => void
   addScan: (scan: Scan, materials: Material[]) => Promise<void>
+  updateScan: (scan: Scan, materials: Material[]) => Promise<void>
   closeSession: (sessionId: string) => Promise<void>
   archiveSession: (sessionId: string) => Promise<void>
   deleteSessionWithoutUploading: (sessionId: string) => Promise<void>
@@ -154,6 +166,11 @@ export function SessionProvider({ children }: { children: ReactNode }) {
     }
   }, [state.sessions])
 
+  const updateScan = useCallback(async (scan: Scan, materials: Material[]) => {
+    await IndexedDBCache.saveScan(scan, materials)
+    dispatch({ type: 'SCAN_UPDATED', scan, materials })
+  }, [])
+
   const flushBatch = useCallback(async (session: Session) => {
     const profile = UserStore.loadProfile()
     const settings = UserStore.loadSettings()
@@ -221,6 +238,7 @@ export function SessionProvider({ children }: { children: ReactNode }) {
       openSession,
       closeActiveView,
       addScan,
+      updateScan,
       closeSession,
       archiveSession,
       deleteSessionWithoutUploading,

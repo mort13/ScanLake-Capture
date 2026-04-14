@@ -79,7 +79,7 @@ function validate(form: ScanFormData, _session: Session, getClusterDeposit: (id:
 }
 
 export function ScanForm({ session, onSessionUpdated, preloadedScan, onPreloadConsumed }: Props) {
-  const { addScan, getClusterDeposit, state } = useSession()
+  const { addScan, updateScan, getClusterDeposit, state } = useSession()
   const [hotkeys, setHotkeys] = useState(() => UserStore.loadSettings().hotkeys)
   const [clusterId, setClusterId] = useState(session.clusterHistory[session.clusterHistory.length - 1])
   const [clusterHistory, setClusterHistory] = useState([...session.clusterHistory])
@@ -95,6 +95,8 @@ export function ScanForm({ session, onSessionUpdated, preloadedScan, onPreloadCo
   })
 
   const [showErrors, setShowErrors] = useState(false)
+  const [editingCaptureId, setEditingCaptureId] = useState<string | null>(null)
+  const [editingTimestamp, setEditingTimestamp] = useState<string | null>(null)
 
   // Load data from a previously saved scan into the form
   useEffect(() => {
@@ -111,6 +113,9 @@ export function ScanForm({ session, onSessionUpdated, preloadedScan, onPreloadCo
         ? materials.map(m => ({ type: m.type, amount: String(m.amount), quality: String(m.quality) }))
         : [{ ...EMPTY_MATERIAL }],
     })
+    setClusterId(scan.clusterId)
+    setEditingCaptureId(scan.captureId)
+    setEditingTimestamp(scan.timestamp)
     setShowErrors(false)
     onPreloadConsumed?.()
   }, [preloadedScan]) // eslint-disable-line react-hooks/exhaustive-deps
@@ -212,37 +217,13 @@ export function ScanForm({ session, onSessionUpdated, preloadedScan, onPreloadCo
     setShowErrors(true)
     if (!validation.valid) return
 
-    const captureId = uuidv4()
     const norm = (s: string) => s.replace(/,/g, '.')
     const volume = parseFloat(norm(form.volume))
-    const scan: Scan = {
-      captureId,
-      sessionId: session.sessionId,
-      userId: session.userId,
-      userName: session.userName,
-      org: session.org,
-      clusterId,
-      timestamp: new Date().toISOString(),
-      system: session.system,
-      gravityWell: session.gravityWell,
-      region: form.region.trim() || 'none',
-      place: 'none',
-      deposit: form.deposit,
-      depositConf: 1.0,
-      mass: parseInt(norm(form.mass), 10),
-      massConf: 1.0,
-      resistance: parseInt(norm(form.resistance), 10),
-      resistanceConf: 1.0,
-      instability: parseFloat(norm(form.instability)),
-      instabilityConf: 1.0,
-      volume,
-      volumeConf: 1.0,
-    }
 
     const materials: Material[] = completeRows.map((r, i) => {
       const amount = Math.round(parseFloat(norm(r.amount)) * 100) / 100
       return {
-        captureId,
+        captureId: editingCaptureId ?? '',
         matIndex: i,
         type: r.type,
         amount,
@@ -252,7 +233,64 @@ export function ScanForm({ session, onSessionUpdated, preloadedScan, onPreloadCo
       }
     })
 
-    await addScan(scan, materials)
+    if (editingCaptureId) {
+      // Update existing scan in-place (no count change)
+      const scan: Scan = {
+        captureId: editingCaptureId,
+        sessionId: session.sessionId,
+        userId: session.userId,
+        userName: session.userName,
+        org: session.org,
+        clusterId,
+        timestamp: editingTimestamp!,
+        system: session.system,
+        gravityWell: session.gravityWell,
+        region: form.region.trim() || 'none',
+        place: 'none',
+        deposit: form.deposit,
+        depositConf: 1.0,
+        mass: parseInt(norm(form.mass), 10),
+        massConf: 1.0,
+        resistance: parseInt(norm(form.resistance), 10),
+        resistanceConf: 1.0,
+        instability: parseFloat(norm(form.instability)),
+        instabilityConf: 1.0,
+        volume,
+        volumeConf: 1.0,
+      }
+      const mats = materials.map(m => ({ ...m, captureId: editingCaptureId }))
+      await updateScan(scan, mats)
+      setEditingCaptureId(null)
+      setEditingTimestamp(null)
+    } else {
+      // Add new scan
+      const captureId = uuidv4()
+      const scan: Scan = {
+        captureId,
+        sessionId: session.sessionId,
+        userId: session.userId,
+        userName: session.userName,
+        org: session.org,
+        clusterId,
+        timestamp: new Date().toISOString(),
+        system: session.system,
+        gravityWell: session.gravityWell,
+        region: form.region.trim() || 'none',
+        place: 'none',
+        deposit: form.deposit,
+        depositConf: 1.0,
+        mass: parseInt(norm(form.mass), 10),
+        massConf: 1.0,
+        resistance: parseInt(norm(form.resistance), 10),
+        resistanceConf: 1.0,
+        instability: parseFloat(norm(form.instability)),
+        instabilityConf: 1.0,
+        volume,
+        volumeConf: 1.0,
+      }
+      const mats = materials.map(m => ({ ...m, captureId }))
+      await addScan(scan, mats)
+    }
 
     // Reset form but keep deposit if same cluster
     setForm({
@@ -434,7 +472,8 @@ export function ScanForm({ session, onSessionUpdated, preloadedScan, onPreloadCo
         <label>
           Resistance
           <input type="number" step="1" min="0" value={form.resistance}
-            onChange={e => updateField('resistance', e.target.value)} placeholder="Resistance (int)" />
+            onChange={e => updateField('resistance', e.target.value)} placeholder="Resistance (int)"
+            style={!form.resistance && form.resistance !== '0' ? { borderColor: 'var(--warning)' } : undefined} />
         </label>
         <label>
           Instability
@@ -492,11 +531,19 @@ export function ScanForm({ session, onSessionUpdated, preloadedScan, onPreloadCo
       )}
 
       <button type="button" onClick={handleSave} className="btn-save">
-        Save Scan ({hotkeys.save})
+        {editingCaptureId ? 'Update Scan' : `Save Scan (${hotkeys.save})`}
       </button>
       <span className="scan-counter">
         Scans in session: {(state.sessions.find(s => s.sessionId === session.sessionId)?.scanCount ?? 0)}
       </span>
+      {editingCaptureId && (
+        <button type="button" className="btn-cancel" onClick={() => {
+          setEditingCaptureId(null)
+          setEditingTimestamp(null)
+          setForm({ deposit: '', region: session.region || '', mass: '', resistance: '', instability: '', volume: '', materials: [{ ...EMPTY_MATERIAL }] })
+          setShowErrors(false)
+        }}>Cancel Edit</button>
+      )}
     </div>
   )
 }
