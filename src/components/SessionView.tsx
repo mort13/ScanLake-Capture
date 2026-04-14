@@ -88,7 +88,7 @@ export function SessionView({ sessionId, onBack }: Props) {
                         onClick={() => setSelectedScan({ scan, materials: state.materials[scan.captureId] ?? [] })}
                       >Load</button>
                     </td>
-                  )}</tr>
+                  )}
                 </tr>
               ))}
             </tbody>
