@@ -77,7 +77,8 @@ export function UserSettings({ open, onClose }: Props) {
       <div className="modal" onClick={e => e.stopPropagation()}>
         <h2>User Settings</h2>
 
-        <div className="settings-section">
+        <div className="modal-body">
+          <div className="settings-section">
           <label>
             User ID
             <input type="text" value={profile.userId} readOnly className="readonly" />
@@ -179,6 +180,8 @@ export function UserSettings({ open, onClose }: Props) {
           <p className="small-text">Clears all sessions, scans, and your User ID from localStorage and IndexedDB.</p>
           <p className="small-text">Cache size estimate: ~100 scans ≈ 0.2–0.5 MB — store thousands of scans locally before closing the session.</p>
         </div>
+
+        </div>{/* modal-body */}
 
         <div className="modal-actions">
           <button onClick={handleSave} className="btn-save">
