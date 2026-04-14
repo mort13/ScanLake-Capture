@@ -20,23 +20,14 @@
   ],
   "commands": {
     "capture": {
-      "suggested_key": {
-        "default": "F9"
-      },
       "description": "Capture OCR scan",
       "global": true
     },
     "save-scan": {
-      "suggested_key": {
-        "default": "F10"
-      },
       "description": "Save current scan",
       "global": true
     },
     "new-cluster": {
-      "suggested_key": {
-        "default": "F11"
-      },
       "description": "Start a new cluster",
       "global": true
     }
