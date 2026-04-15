@@ -2,7 +2,7 @@ import { useState } from 'react'
 import { useSession } from '../store/SessionStore'
 import { IndexedDBCache } from '../store/IndexedDBCache'
 import { UserStore } from '../store/UserStore'
-import { buildScansParquet, buildCompositionsParquet, downloadBlob } from '../services/ParquetExporter'
+import { buildScansParquet, buildCompositionsParquet, buildConfidencesParquet, downloadBlob } from '../services/ParquetExporter'
 import type { Material } from '../types'
 import { Autocomplete } from './Autocomplete'
 import { SYSTEMS, GRAVITY_WELLS } from '../data/deposits'
@@ -41,8 +41,10 @@ export function SessionList({ onOpenSession }: Props) {
     }
     const scansBuffer = buildScansParquet(scans, profile)
     const compsBuffer = buildCompositionsParquet(scans, allMats)
+    const confsBuffer = buildConfidencesParquet(scans)
     downloadBlob(scansBuffer, `${profile.userId}_scans_${sessionId}.parquet`)
     downloadBlob(compsBuffer, `${profile.userId}_compositions_${sessionId}.parquet`)
+    downloadBlob(confsBuffer, `${profile.userId}_confidences_${sessionId}.parquet`)
   }
 
   async function handleDelete(sessionId: string) {

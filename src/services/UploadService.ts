@@ -10,6 +10,7 @@ export interface UploadPayload {
   isFinal: boolean
   scansParquet: ArrayBuffer
   compositionsParquet: ArrayBuffer
+  confidencesParquet: ArrayBuffer
 }
 
 export async function uploadBatch(payload: UploadPayload): Promise<boolean> {
@@ -27,6 +28,11 @@ export async function uploadBatch(payload: UploadPayload): Promise<boolean> {
     'compositions',
     new Blob([payload.compositionsParquet], { type: 'application/octet-stream' }),
     `${payload.userId}_compositions_${payload.sessionId}_batch${payload.batchNumber}.parquet`,
+  )
+  formData.append(
+    'confidences',
+    new Blob([payload.confidencesParquet], { type: 'application/octet-stream' }),
+    `${payload.userId}_confidences_${payload.sessionId}_batch${payload.batchNumber}.parquet`,
   )
 
   try {

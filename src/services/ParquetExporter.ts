@@ -13,27 +13,35 @@ function toFloat64(nums: (number | string)[]): Float64Array {
 export function buildScansParquet(scans: Scan[], profile: UserProfile): ArrayBuffer {
   return parquetWriteBuffer({
     columnData: [
-      { name: 'session_id',       data: scans.map(s => s.sessionId),                    type: 'STRING' },
-      { name: 'user_id',          data: scans.map(() => profile.userId),                 type: 'STRING' },
-      { name: 'user_name',        data: scans.map(() => profile.userName),               type: 'STRING' },
-      { name: 'org',              data: scans.map(() => profile.org),                    type: 'STRING' },
-      { name: 'timestamp',        data: scans.map(s => s.timestamp),                    type: 'STRING' },
-      { name: 'capture_id',       data: scans.map(s => s.captureId),                    type: 'STRING' },
-      { name: 'cluster_id',       data: scans.map(s => s.clusterId),                    type: 'STRING' },
-      { name: 'system',           data: scans.map(s => s.system),                       type: 'STRING' },
-      { name: 'gravity_well',     data: scans.map(s => s.gravityWell),                  type: 'STRING' },
-      { name: 'region',           data: scans.map(s => s.region),                       type: 'STRING' },
-      { name: 'place',            data: scans.map(s => s.place),                        type: 'STRING' },
-      { name: 'deposit',          data: scans.map(s => s.deposit),                      type: 'STRING' },
-      { name: 'deposit_conf',     data: toFloat64(scans.map(() => 1.0)),                   type: 'DOUBLE' },
-      { name: 'mass',             data: toInt32(scans.map(s => s.mass)),              type: 'INT32' },
-      { name: 'mass_conf',        data: toFloat64(scans.map(() => 1.0)),                   type: 'DOUBLE' },
-      { name: 'resistance',       data: toInt32(scans.map(s => s.resistance)),          type: 'INT32' },
-      { name: 'resistance_conf',  data: toFloat64(scans.map(() => 1.0)),                   type: 'DOUBLE' },
-      { name: 'instability',      data: toFloat64(scans.map(s => s.instability)),           type: 'DOUBLE' },
-      { name: 'instability_conf', data: toFloat64(scans.map(() => 1.0)),                   type: 'DOUBLE' },
-      { name: 'volume',           data: toFloat64(scans.map(s => s.volume)),                type: 'DOUBLE' },
-      { name: 'volume_conf',      data: toFloat64(scans.map(() => 1.0)),                   type: 'DOUBLE' },
+      { name: 'session_id',   data: scans.map(s => s.sessionId),         type: 'STRING' },
+      { name: 'user_id',      data: scans.map(() => profile.userId),      type: 'STRING' },
+      { name: 'user_name',    data: scans.map(() => profile.userName),    type: 'STRING' },
+      { name: 'org',          data: scans.map(() => profile.org),         type: 'STRING' },
+      { name: 'timestamp',    data: scans.map(s => s.timestamp),         type: 'STRING' },
+      { name: 'capture_id',   data: scans.map(s => s.captureId),         type: 'STRING' },
+      { name: 'cluster_id',   data: scans.map(s => s.clusterId),         type: 'STRING' },
+      { name: 'system',       data: scans.map(s => s.system),            type: 'STRING' },
+      { name: 'gravity_well', data: scans.map(s => s.gravityWell),       type: 'STRING' },
+      { name: 'region',       data: scans.map(s => s.region),            type: 'STRING' },
+      { name: 'place',        data: scans.map(s => s.place),             type: 'STRING' },
+      { name: 'deposit',      data: scans.map(s => s.deposit),           type: 'STRING' },
+      { name: 'mass',         data: toInt32(scans.map(s => s.mass)),     type: 'INT32' },
+      { name: 'resistance',   data: toInt32(scans.map(s => s.resistance)), type: 'INT32' },
+      { name: 'instability',  data: toFloat64(scans.map(s => s.instability)), type: 'DOUBLE' },
+      { name: 'volume',       data: toFloat64(scans.map(s => s.volume)),  type: 'DOUBLE' },
+    ],
+  })
+}
+
+export function buildConfidencesParquet(scans: Scan[]): ArrayBuffer {
+  return parquetWriteBuffer({
+    columnData: [
+      { name: 'capture_id',       data: scans.map(s => s.captureId),                            type: 'STRING' },
+      { name: 'deposit_conf',     data: toFloat64(scans.map(s => s.depositConf)),               type: 'DOUBLE' },
+      { name: 'mass_conf',        data: toFloat64(scans.map(s => s.massConf)),                  type: 'DOUBLE' },
+      { name: 'resistance_conf',  data: toFloat64(scans.map(s => s.resistanceConf)),            type: 'DOUBLE' },
+      { name: 'instability_conf', data: toFloat64(scans.map(s => s.instabilityConf)),           type: 'DOUBLE' },
+      { name: 'volume_conf',      data: toFloat64(scans.map(s => s.volumeConf)),                type: 'DOUBLE' },
     ],
   })
 }
