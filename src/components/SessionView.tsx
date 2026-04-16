@@ -73,7 +73,7 @@ export function SessionView({ sessionId, onBack }: Props) {
               </tr>
             </thead>
             <tbody>
-              {state.scans.map(scan => (
+              {[...state.scans].sort((a, b) => b.timestamp.localeCompare(a.timestamp)).map(scan => (
                 <tr key={scan.captureId}>
                   <td>{new Date(scan.timestamp).toLocaleTimeString()}</td>
                   <td>{scan.deposit}</td>

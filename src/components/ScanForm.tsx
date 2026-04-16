@@ -326,7 +326,7 @@ export function ScanForm({ session, onSessionUpdated, preloadedScan, onPreloadCo
         setOcrMessage(stage)
       })
 
-      setForm(result.formData)
+      setForm(prev => ({ ...result.formData, region: prev.region }))
       const avgConf = result.confidences.size > 0
         ? [...result.confidences.values()].reduce((a, b) => a + b, 0) / result.confidences.size
         : 0

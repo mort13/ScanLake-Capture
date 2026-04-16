@@ -153,13 +153,14 @@ export function SessionProvider({ children }: { children: ReactNode }) {
     await IndexedDBCache.saveScan(scan, materials)
     dispatch({ type: 'SCAN_ADDED', scan, materials })
 
-    // Update session counts
+    // Update session counts and carry the region forward
     const session = state.sessions.find(s => s.sessionId === scan.sessionId)
     if (session) {
       const updated = {
         ...session,
         scanCount: session.scanCount + 1,
         pendingScans: session.pendingScans + 1,
+        region: scan.region !== 'none' ? scan.region : session.region,
       }
       await IndexedDBCache.saveSession(updated)
       dispatch({ type: 'SESSION_UPDATED', session: updated })
