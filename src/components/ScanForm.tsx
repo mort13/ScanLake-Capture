@@ -95,6 +95,7 @@ export function ScanForm({ session, onSessionUpdated, preloadedScan, onPreloadCo
   })
 
   const [showErrors, setShowErrors] = useState(false)
+  const [duplicateWarning, setDuplicateWarning] = useState(false)
   const [editingCaptureId, setEditingCaptureId] = useState<string | null>(null)
   const [editingTimestamp, setEditingTimestamp] = useState<string | null>(null)
 
@@ -119,6 +120,11 @@ export function ScanForm({ session, onSessionUpdated, preloadedScan, onPreloadCo
     setShowErrors(false)
     onPreloadConsumed?.()
   }, [preloadedScan]) // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Clear duplicate warning when the form data changes
+  useEffect(() => {
+    setDuplicateWarning(false)
+  }, [form])
 
   // OCR state
   const [ocrStatus, setOcrStatus] = useState<OcrStatusType>('idle')
@@ -289,6 +295,34 @@ export function ScanForm({ session, onSessionUpdated, preloadedScan, onPreloadCo
         volumeConf: 1.0,
       }
       const mats = materials.map(m => ({ ...m, captureId }))
+
+      // Duplicate check: abort if an identical scan already exists in this session
+      const isDuplicate = state.scans.some(existing => {
+        if (
+          existing.clusterId !== scan.clusterId ||
+          existing.deposit !== scan.deposit ||
+          existing.mass !== scan.mass ||
+          existing.resistance !== scan.resistance ||
+          existing.instability !== scan.instability ||
+          existing.volume !== scan.volume ||
+          existing.region !== scan.region
+        ) return false
+        const existingMats = (state.materials[existing.captureId] ?? [])
+          .slice().sort((a, b) => a.type.localeCompare(b.type))
+        const newMats = [...mats].sort((a, b) => a.type.localeCompare(b.type))
+        if (existingMats.length !== newMats.length) return false
+        return existingMats.every((m, i) =>
+          m.type === newMats[i].type &&
+          m.amount === newMats[i].amount &&
+          m.quality === newMats[i].quality
+        )
+      })
+
+      if (isDuplicate) {
+        setDuplicateWarning(true)
+        return
+      }
+
       await addScan(scan, mats)
     }
 
@@ -527,6 +561,12 @@ export function ScanForm({ session, onSessionUpdated, preloadedScan, onPreloadCo
       {showErrors && !validation.valid && (
         <div className="validation-errors">
           {validation.errors.map((e, i) => <div key={i} className="error">{e}</div>)}
+        </div>
+      )}
+
+      {duplicateWarning && (
+        <div className="validation-errors">
+          <div className="error">Duplicate scan — this scan is identical to an existing scan in this session and was not added.</div>
         </div>
       )}
 
