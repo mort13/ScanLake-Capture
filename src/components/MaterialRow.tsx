@@ -23,12 +23,10 @@ export function MaterialRow({ row, index, onChange, onRemove, isPartial }: Props
         className={`mat-type ${missing(row.type)}`}
       />
       <input
-        type="number"
-        step="0.01"
-        min="0"
-        max="100"
+        type="text"
+        inputMode="decimal"
         value={row.amount}
-        onChange={e => onChange(index, 'amount', e.target.value)}
+        onChange={e => onChange(index, 'amount', e.target.value.replace(',', '.'))}
         placeholder="Amount %"
         className={`mat-amount ${missing(row.amount)}`}
       />

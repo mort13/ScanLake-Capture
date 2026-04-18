@@ -16,6 +16,7 @@ const GATEWAY_URL = import.meta.env.VITE_GATEWAY_URL ?? ''
 export async function getCrnnMeta(): Promise<ModelMeta> {
   if (crnnMeta) return crnnMeta
   const resp = await fetch('/models/digit_crnn.json')
+  if (!resp.ok) throw new Error(`Failed to load digit_crnn.json: ${resp.status}`)
   crnnMeta = (await resp.json()) as ModelMeta
   return crnnMeta
 }
@@ -23,6 +24,7 @@ export async function getCrnnMeta(): Promise<ModelMeta> {
 export async function getWordMeta(): Promise<ModelMeta> {
   if (wordMeta) return wordMeta
   const resp = await fetch('/models/word_model.json')
+  if (!resp.ok) throw new Error(`Failed to load word_model.json: ${resp.status}`)
   wordMeta = (await resp.json()) as ModelMeta
   return wordMeta
 }

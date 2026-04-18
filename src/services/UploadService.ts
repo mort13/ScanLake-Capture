@@ -1,6 +1,6 @@
 import { getSessionToken, clearToken } from './AuthService'
 
-const STORE_API_BASE = 'https://scanlake-store.mo-55d.workers.dev'
+const STORE_API_BASE = import.meta.env.VITE_STORE_API_BASE ?? 'https://scanlake-store.mo-55d.workers.dev'
 const UPLOAD_URL = `${STORE_API_BASE}/api/upload`
 
 export interface UploadPayload {

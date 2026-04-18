@@ -511,14 +511,14 @@ export function ScanForm({ session, onSessionUpdated, preloadedScan, onPreloadCo
         </label>
         <label>
           Instability
-          <input type="number" step="0.01" min="0" value={form.instability}
-            onChange={e => updateField('instability', e.target.value)} placeholder="Instability"
+          <input type="text" inputMode="decimal" value={form.instability}
+            onChange={e => updateField('instability', e.target.value.replace(',', '.'))} placeholder="Instability"
             style={!form.instability && form.instability !== '0' ? { borderColor: 'var(--warning)' } : undefined} />
         </label>
         <label>
           Volume
-          <input type="number" step="0.01" min="0" value={form.volume}
-            onChange={e => updateField('volume', e.target.value)} placeholder="Volume"
+          <input type="text" inputMode="decimal" value={form.volume}
+            onChange={e => updateField('volume', e.target.value.replace(',', '.'))} placeholder="Volume"
             style={!form.volume ? { borderColor: 'var(--warning)' } : undefined} />
         </label>
       </div>
