@@ -5,14 +5,14 @@ import { dirname, join } from 'path'
 
 const __dirname = dirname(fileURLToPath(import.meta.url))
 
-const modelPath = join(__dirname, '../public/models/word_cnn.json')
+const modelPath = join(__dirname, '../public/models/word_model2k.json')
 const materialsPath = join(__dirname, '../src/data/materials.ts')
 
 const model = JSON.parse(readFileSync(modelPath, 'utf-8'))
 const classes = model.wordClasses ?? []
 
 if (classes.length === 0) {
-  console.error('No wordClasses found in word_cnn.json')
+  console.error('No wordClasses found in word_model2k.json')
   process.exit(1)
 }
 
@@ -32,4 +32,4 @@ ${formatted.map(m => `  '${m}',`).join('\n')}
 `
 
 writeFileSync(materialsPath, tsCode, 'utf-8')
-console.log(`Updated materials.ts with ${formatted.length} classes from word_cnn.json`)
+console.log(`Updated materials.ts with ${formatted.length} classes from word_model2k.json`)

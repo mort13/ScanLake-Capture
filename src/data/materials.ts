@@ -1,6 +1,6 @@
 export const MATERIAL_TYPES = [
-  'Aluminum',
   'Agricium',
+  'Aluminium',
   'Aphorite',
   'Aslarite',
   'Beryl',
@@ -18,6 +18,7 @@ export const MATERIAL_TYPES = [
   'Iron',
   'Laranite',
   'Lindinium',
+  'Quantanium',
   'Quartz',
   'Riccite',
   'Savrilium',

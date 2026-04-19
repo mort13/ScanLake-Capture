@@ -54,6 +54,15 @@ function validate(form: ScanFormData, _session: Session, getClusterDeposit: (id:
     }
   }
 
+  // Quality check
+  for (const row of completeRows) {
+    const quality = parseInt(row.quality, 10)
+    if (quality > 1000) {
+      errors.push(`Material quality cannot exceed 1000 (got ${quality})`)
+      break
+    }
+  }
+
   // Mass / volume ratio
   const mass = parseFloat(form.mass)
   const volume = parseFloat(form.volume)

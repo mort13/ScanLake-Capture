@@ -23,8 +23,8 @@ export async function getCrnnMeta(): Promise<ModelMeta> {
 
 export async function getWordMeta(): Promise<ModelMeta> {
   if (wordMeta) return wordMeta
-  const resp = await fetch('/models/word_model.json')
-  if (!resp.ok) throw new Error(`Failed to load word_model.json: ${resp.status}`)
+  const resp = await fetch('/models/word_model2k.json')
+  if (!resp.ok) throw new Error(`Failed to load word_model2k.json: ${resp.status}`)
   wordMeta = (await resp.json()) as ModelMeta
   return wordMeta
 }
@@ -45,12 +45,12 @@ export async function getCrnnSession(): Promise<ort.InferenceSession> {
 export async function getWordSession(): Promise<ort.InferenceSession> {
   if (wordSession) return wordSession
   const [modelBuffer, dataBuffer] = await Promise.all([
-    fetch('/models/word_model.onnx').then(r => r.arrayBuffer()),
-    fetch(`${GATEWAY_URL}/public/models/word_model.onnx.data`).then(r => r.arrayBuffer()),
+    fetch('/models/word_model2k.onnx').then(r => r.arrayBuffer()),
+    fetch(`${GATEWAY_URL}/public/models/word_model2k.onnx.data`).then(r => r.arrayBuffer()),
   ])
   wordSession = await ort.InferenceSession.create(modelBuffer, {
     executionProviders: ['wasm'],
-    externalData: [{ path: 'word_model.onnx.data', data: dataBuffer }],
+    externalData: [{ path: 'word_model2k.onnx.data', data: dataBuffer }],
   })
   return wordSession
 }
