@@ -76,6 +76,7 @@ export const REGIONS_BY_GRAVITY_WELL: Record<string, string[]> = {
   // === Nyx ===
   'Nyx I': [],
   'Nyx II': [],
-  'Glacium Ring': [],
-  'Keeger Ring': [],
+  'Nyx III': [],
+  'Glaciem Ring': ["Levski"],
+  'Keeger Ring': ["PSS Alpha", "PSS Delta", "PSS Theta", "PSS Lambda"],
 }
