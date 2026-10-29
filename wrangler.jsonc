@@ -2,6 +2,9 @@
   "$schema": "node_modules/wrangler/config-schema.json",
   "name": "scanlake-capture",
   "compatibility_date": "2026-04-08",
+  "routes": [
+    { "pattern": "capture.scanlake.rocks", "custom_domain": true }
+  ],
   "observability": {
     "enabled": true
   },

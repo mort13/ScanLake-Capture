@@ -5,6 +5,22 @@ export interface UserProfile {
   email?: string // optional, for recovery
 }
 
+/** Response of the auth worker's GET /api/me (Discord login, scope `identify`). */
+export interface AccountInfo {
+  discord: {
+    id: string
+    username: string
+    globalName: string | null
+    avatarUrl: string | null
+  }
+  primaryUserId: string | null
+  userIds: string[] // uuid4, all IDs linked to this Discord account
+  profile: {
+    userName: string
+    org: string
+  }
+}
+
 export interface UserSettings {
   autoArchive: boolean
   autoDownload: boolean

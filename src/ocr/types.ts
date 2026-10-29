@@ -50,7 +50,7 @@ export interface AnchorConfig {
   search_region?: SearchRegion
 }
 
-export interface SubAnchorConfig extends AnchorConfig {}
+export type SubAnchorConfig = AnchorConfig
 
 export interface ProfileConfig {
   name: string

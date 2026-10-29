@@ -4,13 +4,19 @@ import { SessionList } from './components/SessionList'
 import { SessionView } from './components/SessionView'
 import { UserSettings } from './components/UserSettings'
 import { AboutModal } from './components/AboutModal'
+import { DiscordAvatar } from './components/DiscordAvatar'
 import { UserStore } from './store/UserStore'
+import { useAccount } from './store/AccountStore'
+import { accountDisplayName } from './services/AccountService'
 import './styles/index.css'
 
 export default function App() {
   const [activeSessionId, setActiveSessionId] = useState<string | null>(null)
   const [settingsOpen, setSettingsOpen] = useState(false)
   const [aboutOpen, setAboutOpen] = useState(false)
+  // Re-renders the header when the account restores the user ID or profile
+  const { state: accountState, dismissNotice } = useAccount()
+  const account = accountState.account
   const profile = UserStore.loadProfile()
 
   const needsSetup = !profile.userName
@@ -22,7 +28,14 @@ export default function App() {
           <h1>ScanLake Capture</h1>
           <div className="header-right">
             {profile.userName && (
-              <span className="user-badge">{profile.userName}{profile.org ? ` (${profile.org})` : ''}</span>
+              <span className="user-badge">
+                {account && (
+                  <span className="discord-marker" title={`Linked with Discord as ${accountDisplayName(account)}`}>
+                    <DiscordAvatar account={account} size={16} />
+                  </span>
+                )}
+                {profile.userName}{profile.org ? ` (${profile.org})` : ''}
+              </span>
             )}
             <button onClick={() => setAboutOpen(true)} className="btn-settings">About</button>
             <button onClick={() => setSettingsOpen(true)} className="btn-settings">Settings</button>
@@ -30,6 +43,13 @@ export default function App() {
         </header>
 
         <main className="app-main">
+          {accountState.notice && (
+            <div className="account-notice">
+              <span>{accountState.notice}</span>
+              <button onClick={dismissNotice} className="btn-icon" aria-label="Dismiss">×</button>
+            </div>
+          )}
+
           {needsSetup && !settingsOpen && (
             <div className="setup-prompt">
               <p>Welcome to ScanLake Capture. Please set up your profile to get started.</p>
