@@ -4,6 +4,7 @@ import { IndexedDBCache } from './IndexedDBCache'
 import { UserStore } from './UserStore'
 import { buildScansParquet, buildCompositionsParquet, buildConfidencesParquet, downloadBlob } from '../services/ParquetExporter'
 import { uploadBatch } from '../services/UploadService'
+import { pingSession } from '../services/PulseService'
 import type { Session, Scan, Material } from '../types'
 
 interface SessionState {
@@ -134,10 +135,14 @@ export function SessionProvider({ children }: { children: ReactNode }) {
     }
     await IndexedDBCache.saveSession(session)
     dispatch({ type: 'SESSION_CREATED', session })
+    pingSession(session.sessionId, 'open')
     return session
   }, [])
 
   const openSession = useCallback(async (sessionId: string) => {
+    // Resuming a session keeps it from going stale on the landing page.
+    const session = await IndexedDBCache.getSession(sessionId)
+    if (session?.status === 'active') pingSession(sessionId, 'open')
     const scans = await IndexedDBCache.getScansForSession(sessionId)
     const materials: Record<string, Material[]> = {}
     for (const scan of scans) {
@@ -240,6 +245,7 @@ export function SessionProvider({ children }: { children: ReactNode }) {
     // Delete the session itself
     await IndexedDBCache.deleteSession(sessionId)
     dispatch({ type: 'SESSION_REMOVED', sessionId })
+    pingSession(sessionId, 'discard')
   }, [])
 
   const getClusterDeposit = useCallback((clusterId: string) => {
