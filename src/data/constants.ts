@@ -3,7 +3,6 @@ export const VALIDATION = {
   AMOUNT_SUM_TARGET: 100,
   AMOUNT_SUM_TOLERANCE: (numRows: number) => 0.009 * numRows,
   MASS_MIN_MULTIPLIER: 100, // mass must be >= 100 * volume
-  BATCH_SIZE: 50, // auto-flush after 50 scans
   DECIMAL_PLACES: 2, // for amount
 } as const;
 
