@@ -1,7 +1,7 @@
-import { parquetWriteBuffer } from 'hyparquet-writer'
+import { parquetWriteBuffer, type ColumnSource } from 'hyparquet-writer'
 import type { Scan, Material } from '../types'
 import type { UserProfile } from '../types'
-import { materialVolume } from '../data/volume'
+import { materialVolume } from '../data/fields'
 
 function toInt32(nums: (number | string)[]): Int32Array {
   return Int32Array.from(nums.map(n => Math.round(Number(n))))
@@ -9,6 +9,14 @@ function toInt32(nums: (number | string)[]): Int32Array {
 
 function toFloat64(nums: (number | string)[]): Float64Array {
   return Float64Array.from(nums.map(n => parseFloat(String(n).replace(/,/g, '.'))))
+}
+
+// mass is INT32 or DOUBLE in format v2: DOUBLE only when the batch holds a decimal mass (deposits
+// under 1 SCU), so batches of whole masses stay INT32 as before
+function massColumn(masses: number[]): ColumnSource {
+  return masses.some(m => !Number.isInteger(Number(m)))
+    ? { name: 'mass', data: toFloat64(masses), type: 'DOUBLE' }
+    : { name: 'mass', data: toInt32(masses), type: 'INT32' }
 }
 
 export function buildScansParquet(scans: Scan[], profile: UserProfile): ArrayBuffer {
@@ -26,7 +34,7 @@ export function buildScansParquet(scans: Scan[], profile: UserProfile): ArrayBuf
       { name: 'region',       data: scans.map(s => s.region),            type: 'STRING' },
       { name: 'place',        data: scans.map(s => s.place),             type: 'STRING' },
       { name: 'deposit',      data: scans.map(s => s.deposit),           type: 'STRING' },
-      { name: 'mass',         data: toInt32(scans.map(s => s.mass)),     type: 'INT32' },
+      massColumn(scans.map(s => s.mass)),
       { name: 'resistance',   data: toInt32(scans.map(s => s.resistance)), type: 'INT32' },
       { name: 'instability',  data: toFloat64(scans.map(s => s.instability)), type: 'DOUBLE' },
       { name: 'volume',       data: toFloat64(scans.map(s => s.volume)),  type: 'DOUBLE' },

@@ -9,7 +9,7 @@ import { CaptureOverlay } from './CaptureOverlay'
 import { CapturePreview } from './CapturePreview'
 import { DEPOSIT_TYPES } from '../data/deposits'
 import { REGIONS_BY_GRAVITY_WELL } from '../data/regions'
-import { materialVolume, normalizeVolume, parseVolume } from '../data/volume'
+import { massDecimalsAllowed, materialVolume, normalizeMass, normalizeVolume, parseMass, parseVolume } from '../data/fields'
 import { useSession } from '../store/SessionStore'
 import { IndexedDBCache } from '../store/IndexedDBCache'
 import { runPipeline } from '../ocr/OcrPipeline'
@@ -65,10 +65,13 @@ function validate(form: ScanFormData, _session: Session, getClusterDeposit: (id:
   }
 
   // Mass / volume ratio
-  const mass = parseFloat(form.mass)
+  const mass = parseMass(form.mass)
   const volume = parseVolume(form.volume)
   if (mass && volume && mass < 100 * volume) {
     errors.push(`Mass (${mass}) must be at least 100\u00d7 volume (${volume}) = ${(100 * volume).toFixed(1)}`)
+  }
+  if (!massDecimalsAllowed(form.mass, volume)) {
+    errors.push(`Mass (${mass}) has decimals, which the HUD only shows for deposits under 1 SCU (volume in mSCU)`)
   }
 
   // Cluster deposit consistency
@@ -79,7 +82,9 @@ function validate(form: ScanFormData, _session: Session, getClusterDeposit: (id:
 
   // Basic required fields
   if (!form.deposit) errors.push('Deposit type is required')
-  if (!form.mass || isNaN(mass)) errors.push('Mass is required')
+  const massText = normalizeMass(form.mass)
+  if (massText === null) errors.push(`Mass "${form.mass}" is not valid (whole number, or like 12.34 under 1 SCU)`)
+  else if (!massText) errors.push('Mass is required')
   if (!form.resistance && form.resistance !== '0') errors.push('Resistance is required')
   if (!form.instability && form.instability !== '0') errors.push('Instability is required')
   const volumeText = normalizeVolume(form.volume)
@@ -169,7 +174,7 @@ export function ScanForm({ session, onSessionUpdated, preloadedScan, onPreloadCo
   const completeRows = filledRows.filter(isRowComplete)
   const amountSum = completeRows.reduce((s, r) => s + (parseFloat(r.amount) || 0), 0)
   const tolerance = 0.009 * completeRows.length
-  const massVal = parseFloat(form.mass) || 0
+  const massVal = parseMass(form.mass) || 0
   const volVal = parseVolume(form.volume) || 0
 
   const checks = {
@@ -267,7 +272,7 @@ export function ScanForm({ session, onSessionUpdated, preloadedScan, onPreloadCo
         place: 'none',
         deposit: form.deposit,
         depositConf: 1.0,
-        mass: parseInt(norm(form.mass), 10),
+        mass: parseMass(form.mass),
         massConf: 1.0,
         resistance: parseInt(norm(form.resistance), 10),
         resistanceConf: 1.0,
@@ -297,7 +302,7 @@ export function ScanForm({ session, onSessionUpdated, preloadedScan, onPreloadCo
         place: 'none',
         deposit: form.deposit,
         depositConf: 1.0,
-        mass: parseInt(norm(form.mass), 10),
+        mass: parseMass(form.mass),
         massConf: 1.0,
         resistance: parseInt(norm(form.resistance), 10),
         resistanceConf: 1.0,
@@ -511,8 +516,8 @@ export function ScanForm({ session, onSessionUpdated, preloadedScan, onPreloadCo
         </label>
         <label>
           Mass
-          <input type="number" step="1" min="0" value={form.mass}
-            onChange={e => updateField('mass', e.target.value)} placeholder="Mass (int)"
+          <input type="number" step="any" min="0" value={form.mass}
+            onChange={e => updateField('mass', e.target.value)} placeholder="Mass"
             style={!form.mass ? { borderColor: 'var(--warning)' } : undefined} />
         </label>
         <label>

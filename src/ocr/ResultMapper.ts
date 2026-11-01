@@ -2,7 +2,7 @@ import type { RoiResult, OutputSchemaNode, MasterProfile } from './types'
 import type { ScanFormData, MaterialFormRow } from '../types'
 import { DEPOSIT_TYPES } from '../data/deposits'
 import { MATERIAL_TYPES } from '../data/materials'
-import { normalizeVolume } from '../data/volume'
+import { normalizeMass, normalizeVolume } from '../data/fields'
 
 /**
  * Map OCR results from ROIs into a ScanFormData object that can directly populate the form.
@@ -41,7 +41,10 @@ export function mapResultsToForm(
   const deposit = fuzzyMatch(rawDeposit, DEPOSIT_TYPES as unknown as string[])
   if (deposit) confidences.set('deposit', confidences.get(`${prefix}deposit_name`) ?? confidences.get(`${prefix}deposit`) ?? 0)
 
-  const mass = get(`${prefix}mass`)
+  // Whole, or e.g. "12.34" for deposits under 1 SCU; an invalid reading is left for the user
+  const rawMass = get(`${prefix}mass`)
+  const mass = normalizeMass(rawMass) ?? ''
+  if (rawMass && !mass) confidences.set(`${prefix}mass`, 0)
   const resistance = getNumeric(`${prefix}resistance`)
   const instability = get(`${prefix}instability`)
   // Milli-SCU ("25.26m") becomes SCU; an invalid reading (e.g. "25.266%") is left for the user
