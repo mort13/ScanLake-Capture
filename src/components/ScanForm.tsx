@@ -9,6 +9,7 @@ import { CaptureOverlay } from './CaptureOverlay'
 import { CapturePreview } from './CapturePreview'
 import { DEPOSIT_TYPES } from '../data/deposits'
 import { REGIONS_BY_GRAVITY_WELL } from '../data/regions'
+import { materialVolume, normalizeVolume, parseVolume } from '../data/volume'
 import { useSession } from '../store/SessionStore'
 import { IndexedDBCache } from '../store/IndexedDBCache'
 import { runPipeline } from '../ocr/OcrPipeline'
@@ -65,7 +66,7 @@ function validate(form: ScanFormData, _session: Session, getClusterDeposit: (id:
 
   // Mass / volume ratio
   const mass = parseFloat(form.mass)
-  const volume = parseFloat(form.volume)
+  const volume = parseVolume(form.volume)
   if (mass && volume && mass < 100 * volume) {
     errors.push(`Mass (${mass}) must be at least 100\u00d7 volume (${volume}) = ${(100 * volume).toFixed(1)}`)
   }
@@ -81,7 +82,9 @@ function validate(form: ScanFormData, _session: Session, getClusterDeposit: (id:
   if (!form.mass || isNaN(mass)) errors.push('Mass is required')
   if (!form.resistance && form.resistance !== '0') errors.push('Resistance is required')
   if (!form.instability && form.instability !== '0') errors.push('Instability is required')
-  if (!form.volume || isNaN(volume)) errors.push('Volume is required')
+  const volumeText = normalizeVolume(form.volume)
+  if (volumeText === null) errors.push(`Volume "${form.volume}" is not valid (SCU like 12.34, or milli-SCU like 25.26m)`)
+  else if (!volumeText) errors.push('Volume is required')
   if (completeRows.length === 0) errors.push('At least one complete material row is required')
 
   return { valid: errors.length === 0, errors }
@@ -167,7 +170,7 @@ export function ScanForm({ session, onSessionUpdated, preloadedScan, onPreloadCo
   const amountSum = completeRows.reduce((s, r) => s + (parseFloat(r.amount) || 0), 0)
   const tolerance = 0.009 * completeRows.length
   const massVal = parseFloat(form.mass) || 0
-  const volVal = parseFloat(form.volume) || 0
+  const volVal = parseVolume(form.volume) || 0
 
   const checks = {
     completeness: filledRows.length > 0 && filledRows.every(isRowComplete),
@@ -233,7 +236,7 @@ export function ScanForm({ session, onSessionUpdated, preloadedScan, onPreloadCo
     if (!validation.valid) return
 
     const norm = (s: string) => s.replace(/,/g, '.')
-    const volume = parseFloat(norm(form.volume))
+    const volume = parseVolume(form.volume)
 
     const materials: Material[] = completeRows.map((r, i) => {
       const amount = Math.round(parseFloat(norm(r.amount)) * 100) / 100
@@ -243,7 +246,7 @@ export function ScanForm({ session, onSessionUpdated, preloadedScan, onPreloadCo
         type: r.type,
         amount,
         quality: parseInt(norm(r.quality), 10),
-        materialVolume: Math.round((volume * amount / 100) * 100) / 100,
+        materialVolume: materialVolume(volume, amount),
         minConfidence: 1.0,
       }
     })
@@ -440,7 +443,7 @@ export function ScanForm({ session, onSessionUpdated, preloadedScan, onPreloadCo
   }
 
   // Calculate material_volume preview
-  const volume = parseFloat(form.volume) || 0
+  const volume = parseVolume(form.volume) || 0
 
   return (
     <div className="scan-form">
@@ -528,6 +531,11 @@ export function ScanForm({ session, onSessionUpdated, preloadedScan, onPreloadCo
           Volume
           <input type="text" inputMode="decimal" value={form.volume}
             onChange={e => updateField('volume', e.target.value.replace(',', '.'))} placeholder="Volume"
+            // Typed milli-SCU ("25.26m") shows as the SCU it is stored as
+            onBlur={() => {
+              const v = normalizeVolume(form.volume)
+              if (v && v !== form.volume) updateField('volume', v)
+            }}
             style={!form.volume ? { borderColor: 'var(--warning)' } : undefined} />
         </label>
       </div>
@@ -552,7 +560,7 @@ export function ScanForm({ session, onSessionUpdated, preloadedScan, onPreloadCo
               isPartial={isRowFilled(row) && !isRowComplete(row)}
             />
             <span className="mat-volume-calc">
-              {isRowComplete(row) ? (volume * parseFloat(row.amount) / 100).toFixed(2) : '-'}
+              {isRowComplete(row) ? materialVolume(volume, parseFloat(row.amount)) : '-'}
             </span>
           </div>
         ))}

@@ -17,7 +17,12 @@ export async function getCrnnMeta(): Promise<ModelMeta> {
   if (crnnMeta) return crnnMeta
   const resp = await fetch('/models/digit_crnn.json')
   if (!resp.ok) throw new Error(`Failed to load digit_crnn.json: ${resp.status}`)
-  crnnMeta = (await resp.json()) as ModelMeta
+  const meta = (await resp.json()) as ModelMeta
+  // The alphabet comes from the model (e.g. "0123456789.%m"); the CTC blank is the extra class
+  if (meta.numClasses !== meta.charClasses.length + 1) {
+    throw new Error(`digit_crnn.json: numClasses ${meta.numClasses} does not fit charClasses "${meta.charClasses}"`)
+  }
+  crnnMeta = meta
   return crnnMeta
 }
 

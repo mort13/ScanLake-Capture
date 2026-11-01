@@ -99,7 +99,7 @@ export function validateFormat(text: string, formatPattern: string, meta: ModelM
     return /^\d{1,6}$/.test(text)
   }
 
-  // Otherwise try all defined formats from the metadata
+  // Otherwise try all defined formats from the metadata (e.g. "milli" for "25.26m")
   for (const regex of Object.values(meta.formats)) {
     if (new RegExp(regex).test(text)) return true
   }

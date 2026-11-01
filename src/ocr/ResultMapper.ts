@@ -2,6 +2,7 @@ import type { RoiResult, OutputSchemaNode, MasterProfile } from './types'
 import type { ScanFormData, MaterialFormRow } from '../types'
 import { DEPOSIT_TYPES } from '../data/deposits'
 import { MATERIAL_TYPES } from '../data/materials'
+import { normalizeVolume } from '../data/volume'
 
 /**
  * Map OCR results from ROIs into a ScanFormData object that can directly populate the form.
@@ -43,7 +44,10 @@ export function mapResultsToForm(
   const mass = get(`${prefix}mass`)
   const resistance = getNumeric(`${prefix}resistance`)
   const instability = get(`${prefix}instability`)
-  const volume = get(`${prefix}volume`)
+  // Milli-SCU ("25.26m") becomes SCU; an invalid reading (e.g. "25.266%") is left for the user
+  const rawVolume = get(`${prefix}volume`)
+  const volume = normalizeVolume(rawVolume) ?? ''
+  if (rawVolume && !volume) confidences.set(`${prefix}volume`, 0)
 
   // Materials: named slots material1…material5
   const materials: MaterialFormRow[] = []

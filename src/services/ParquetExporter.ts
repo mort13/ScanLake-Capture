@@ -1,6 +1,7 @@
 import { parquetWriteBuffer } from 'hyparquet-writer'
 import type { Scan, Material } from '../types'
 import type { UserProfile } from '../types'
+import { materialVolume } from '../data/volume'
 
 function toInt32(nums: (number | string)[]): Int32Array {
   return Int32Array.from(nums.map(n => Math.round(Number(n))))
@@ -51,7 +52,7 @@ export function buildCompositionsParquet(scans: Scan[], materials: Material[]): 
   const scanVolumeMap = new Map(scans.map(s => [s.captureId, s.volume]))
   const enriched = materials.map(m => ({
     ...m,
-    materialVolume: Math.round(((scanVolumeMap.get(m.captureId) ?? 0) * m.amount / 100) * 100) / 100,
+    materialVolume: materialVolume(scanVolumeMap.get(m.captureId) ?? 0, m.amount),
   }))
 
   return parquetWriteBuffer({
