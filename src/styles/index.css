@@ -1,25 +1,28 @@
+/* The amber CRT terminal theme of all ScanLake pages (theme.css), mapped onto
+   Capture's own tokens. --bg, --text and --danger come from theme.css. */
 :root {
-  --bg: #0f1117;
-  --surface: #1a1d27;
-  --surface-2: #252833;
-  --border: #333845;
-  --text: #e1e4ea;
-  --text-dim: #8b8fa3;
-  --primary: #4f8ff7;
-  --primary-hover: #3a7be0;
-  --danger: #e55050;
-  --warning: #e5a850;
-  --success: #50c878;
-  --invalid: #e55050;
-  --radius: 6px;
-  --discord: #5865f2;
-  --discord-hover: #4752c4;
+  --surface: var(--bg-raised);
+  --surface-2: var(--ink-1);
+  --bg-card: var(--bg-raised);
+  --border: #4d3209;
+  --text-dim: var(--text-muted);
+  --primary: var(--amber);
+  --primary-hover: var(--amber-hi);
+  --accent: var(--amber);
+  --warning: var(--amber);
+  --success: var(--amber-hi);
+  --invalid: var(--danger);
+  --radius: 0;
+  --discord: var(--amber);
+  --discord-hover: var(--amber-hi);
+  /* A softer glow than the landing page: forms and numbers stay crisp */
+  --glow: 0 0 6px rgba(255, 176, 0, 0.22);
 }
 
 * { box-sizing: border-box; margin: 0; padding: 0; }
 
 body {
-  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  font-family: var(--font-mono);
   background: var(--bg);
   color: var(--text);
   line-height: 1.5;
@@ -64,14 +67,14 @@ button {
   padding: 6px 14px;
   transition: background 0.15s;
 }
-.btn-primary { background: var(--primary); color: #fff; }
+.btn-primary { background: var(--primary); color: var(--bg); text-shadow: none; }
 .btn-primary:hover { background: var(--primary-hover); }
 .btn-primary:disabled { opacity: 0.5; cursor: default; }
-.btn-save { background: var(--success); color: #fff; }
+.btn-save { background: var(--success); color: var(--bg); text-shadow: none; }
 .btn-cancel { background: var(--surface-2); color: var(--text); }
-.btn-warning { background: var(--warning); color: #000; }
-.btn-danger { background: var(--danger); color: #fff; }
-.btn-discord { background: var(--discord); color: #fff; }
+.btn-warning { background: var(--warning); color: var(--bg); text-shadow: none; }
+.btn-danger { background: var(--danger); color: var(--bg); text-shadow: none; }
+.btn-discord { background: var(--discord); color: var(--bg); text-shadow: none; }
 .btn-discord:hover { background: var(--discord-hover); }
 .btn-discord:disabled { opacity: 0.5; cursor: default; }
 .btn-settings { background: var(--surface-2); color: var(--text); }
@@ -90,7 +93,7 @@ button {
   margin-top: 8px;
   font-size: 0.8rem;
 }
-.btn-new-cluster { background: var(--primary); color: #fff; font-size: 0.8rem; }
+.btn-new-cluster { background: var(--primary); color: var(--bg); text-shadow: none; font-size: 0.8rem; }
 
 /* Inputs */
 input, select {
@@ -155,8 +158,8 @@ label {
 .session-date { color: var(--text-dim); font-size: 0.85rem; }
 .session-scans { color: var(--text-dim); font-size: 0.85rem; }
 .session-status { font-size: 0.75rem; padding: 2px 8px; border-radius: 12px; text-transform: uppercase; }
-.status-active { background: var(--success); color: #000; }
-.status-closed { background: var(--warning); color: #000; }
+.status-active { background: var(--success); color: var(--bg); text-shadow: none; }
+.status-closed { background: none; color: var(--text-dim); box-shadow: inset 0 0 0 1px var(--ink-4); }
 .session-actions { display: flex; gap: 6px; }
 
 /* Session View */
@@ -226,9 +229,9 @@ label {
   padding: 4px 0;
 }
 .material-row.partial .missing,
-.material-row.partial .missing input { border-color: orange; }
+.material-row.partial .missing input { border-color: var(--amber-hi); border-style: dashed; }
 .material-row.partial .missing input::placeholder,
-.material-row.partial .missing::placeholder { color: orange; opacity: 1; }
+.material-row.partial .missing::placeholder { color: var(--amber-hi); opacity: 1; }
 .mat-index { font-size: 0.75rem; color: var(--text-dim); text-align: center; }
 .mat-volume-calc { font-size: 0.8rem; color: var(--text-dim); text-align: right; }
 
@@ -257,7 +260,7 @@ label {
 .autocomplete-dropdown li:hover,
 .autocomplete-dropdown li.highlighted {
   background: var(--primary);
-  color: #fff;
+  color: var(--bg); text-shadow: none;
 }
 
 /* Validation */
@@ -273,11 +276,11 @@ label {
   border-radius: 12px;
   white-space: nowrap;
 }
-.validation-badge.valid { background: rgba(80, 200, 120, 0.15); color: var(--success); }
-.validation-badge.invalid { background: rgba(229, 80, 80, 0.15); color: var(--invalid); }
+.validation-badge.valid { background: rgba(255, 176, 0, 0.12); color: var(--success); }
+.validation-badge.invalid { background: rgba(255, 75, 43, 0.14); color: var(--invalid); }
 
 .validation-errors {
-  background: rgba(229, 80, 80, 0.1);
+  background: rgba(255, 75, 43, 0.1);
   border: 1px solid var(--invalid);
   border-radius: var(--radius);
   padding: 10px;
@@ -358,7 +361,7 @@ label {
   align-items: center;
   justify-content: center;
   background: var(--discord);
-  color: #fff;
+  color: var(--bg); text-shadow: none;
   font-weight: 600;
   line-height: 1;
 }
@@ -536,11 +539,11 @@ label {
   border-radius: 10px;
   white-space: nowrap;
 }
-.status-pill.ok   { background: rgba(80,200,120,0.15); color: var(--success); }
-.status-pill.warn { background: rgba(229,168,80,0.15); color: var(--warning); }
+.status-pill.ok   { background: rgba(255, 176, 0, 0.12); color: var(--success); }
+.status-pill.warn { background: none; color: var(--warning); box-shadow: inset 0 0 0 1px var(--warning); }
 
 .preview-error {
-  background: rgba(229,80,80,0.12);
+  background: rgba(255, 75, 43, 0.12);
   border-bottom: 1px solid var(--danger);
   color: var(--danger);
   font-size: 0.82rem;
@@ -577,9 +580,9 @@ label {
   font-size: 0.75rem;
   flex-shrink: 0;
 }
-.legend-anchor     { color: var(--success); }
+.legend-anchor     { color: #50c878; }
 .legend-nearmiss   { color: #ff8c00; }
-.legend-subanchor  { color: var(--primary); }
+.legend-subanchor  { color: #4f8ff7; }
 .legend-roi        { color: #ffe066; }
 
 /* Debug info bar */
@@ -703,3 +706,66 @@ label {
   background: rgba(229, 80, 80, 0.18);
   color: #e55050;
 }
+
+/* ================================================================
+   Terminal look (amber CRT, see theme.css)
+   ================================================================ */
+
+/* Square corners everywhere, also where a rule sets its own radius */
+*, *::before, *::after { border-radius: 0 !important; }
+
+/* Display font for titles; VT323 needs a larger size */
+.app-header { border-bottom-color: var(--line-bright); }
+.app-header h1 { font-size: 2rem; color: var(--amber-hi); text-transform: uppercase; letter-spacing: 1px; text-shadow: var(--glow-strong); }
+.app-header h1::before { content: '◈ '; }
+.session-list-header h2, .session-view-header h2, .modal h2 { font-size: 1.7rem; font-weight: 400; text-transform: uppercase; color: var(--amber-hi); }
+.scan-list h3, .modal h3 { font-size: 1.35rem; font-weight: 400; text-transform: uppercase; color: var(--amber); }
+.materials-section h4 { text-transform: uppercase; letter-spacing: 0.5px; font-size: 0.8rem; color: var(--text-dim); }
+.preview-title { font-family: var(--font-display); font-size: 1.4rem; font-weight: 400; text-transform: uppercase; color: var(--amber-hi); }
+.user-badge { background: none; box-shadow: inset 0 0 0 1px var(--ink-3); }
+
+/* Buttons: solid amber for the main action, outlines for the rest, inverse video on hover */
+button { font-family: inherit; }
+.btn-primary, .btn-save, .btn-new-cluster { background: var(--amber); color: var(--bg); text-shadow: none; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px; }
+.btn-primary:hover:not(:disabled), .btn-save:hover, .btn-new-cluster:hover { background: var(--amber-hi); }
+.btn-primary::before, .btn-save::before { content: '[ '; opacity: 0.6; }
+.btn-primary::after, .btn-save::after { content: ' ]'; opacity: 0.6; }
+.btn-cancel, .btn-settings, .btn-sm, .btn-add-row, .btn-discord {
+  background: none; color: var(--text); box-shadow: inset 0 0 0 1px var(--ink-4);
+}
+.btn-cancel:hover, .btn-settings:hover, .btn-sm:hover, .btn-add-row:hover, .btn-discord:hover:not(:disabled) {
+  background: var(--amber); color: var(--bg); text-shadow: none; box-shadow: none;
+}
+.btn-danger { background: var(--danger); color: var(--bg); text-shadow: none; box-shadow: none; }
+.btn-danger:hover { background: #ff7a5c; color: var(--bg); }
+.btn-back { color: var(--amber-hi); }
+.btn-back:hover { text-decoration: underline; }
+
+/* Inputs: black wells with an amber edge */
+input, select { background: var(--bg); border-color: var(--border); font-family: inherit; }
+input:focus, select:focus { border-color: var(--amber); box-shadow: 0 0 0 1px var(--amber), 0 0 10px rgba(255, 176, 0, 0.25); }
+input::placeholder { color: var(--text-subtle); }
+select option { background: var(--surface); color: var(--text); }
+input[type='checkbox'] { accent-color: var(--amber); }
+
+/* Cards, forms, modals */
+.create-session, .session-card, .scan-form, .ocr-controls, .roi-card { border: 1px solid var(--border); }
+.session-card { border-left: 3px solid var(--ink-3); }
+.session-card.active { border-left-color: var(--amber-hi); box-shadow: -4px 0 12px -6px rgba(255, 176, 0, 0.6); }
+.session-card.closed { border-left-color: var(--ink-4); }
+.session-status { font-family: var(--font-display); font-size: 0.95rem; letter-spacing: 0.5px; }
+.modal { box-shadow: 0 0 0 1px var(--ink-2), 0 0 30px rgba(255, 176, 0, 0.12), 0 24px 64px rgba(0, 0, 0, 0.6); }
+.autocomplete-dropdown li:hover, .autocomplete-dropdown li.highlighted { color: var(--bg); text-shadow: none; }
+.scan-table th { text-transform: uppercase; letter-spacing: 0.5px; font-size: 0.72rem; color: var(--text-subtle); }
+.scan-table tr:hover td { background: var(--ink-1); }
+.ocr-status-processing { animation: cursor-blink 1.1s steps(1, end) infinite; }
+.hotkey-bind-btn.listening { background: var(--amber); color: var(--bg); text-shadow: none; }
+
+/* The capture and calibration screens show the game frame: no scanlines over it */
+body:has(.capture-overlay, .preview-overlay)::after { display: none; }
+
+/* Scrollbars */
+::-webkit-scrollbar { width: 8px; height: 8px; }
+::-webkit-scrollbar-thumb { background: var(--ink-3); }
+::-webkit-scrollbar-thumb:hover { background: var(--ink-4); }
+* { scrollbar-color: var(--ink-3) transparent; }

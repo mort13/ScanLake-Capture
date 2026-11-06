@@ -78,13 +78,13 @@ export function CaptureOverlay({ onRegionSelected, onCancel, existingRegion }: P
     // Cut out selected region (draw it bright)
     if (rect) {
       ctx.drawImage(bgImage, rect.x, rect.y, rect.width, rect.height, rect.x, rect.y, rect.width, rect.height)
-      ctx.strokeStyle = '#4f8ff7'
+      ctx.strokeStyle = '#ffb000'
       ctx.lineWidth = 2
       ctx.strokeRect(rect.x, rect.y, rect.width, rect.height)
 
       // Dimension label
-      ctx.fillStyle = '#4f8ff7'
-      ctx.font = '14px monospace'
+      ctx.fillStyle = '#ffb000'
+      ctx.font = '14px "IBM Plex Mono", monospace'
       ctx.fillText(`${rect.width} × ${rect.height}`, rect.x + 4, rect.y - 6)
     }
   }, [bgImage, rect])

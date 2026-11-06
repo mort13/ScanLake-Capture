@@ -8,6 +8,7 @@ import { DiscordAvatar } from './components/DiscordAvatar'
 import { UserStore } from './store/UserStore'
 import { useAccount } from './store/AccountStore'
 import { accountDisplayName } from './services/AccountService'
+import './styles/theme.css'
 import './styles/index.css'
 
 export default function App() {
