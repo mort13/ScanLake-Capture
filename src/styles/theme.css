@@ -89,6 +89,10 @@ p { text-wrap: pretty; }
 
 :focus-visible { outline: 2px solid var(--amber-hi); outline-offset: 2px; }
 
+/* The ◈ logo mark: inline SVG, the same drawing as favicon.svg; the drop shadow is the text glow. */
+.logo-mark { display: inline-block; flex: none; width: 16px; height: 16px; vertical-align: -2px; filter: drop-shadow(0 0 3px rgba(255, 176, 0, 0.45)); }
+a:hover .logo-mark { filter: none; }
+
 /* A terminal window: 1px border, title sitting in the top border. */
 .box {
   position: relative;

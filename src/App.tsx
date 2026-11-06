@@ -26,7 +26,16 @@ export default function App() {
     <SessionProvider>
       <div className="app">
         <header className="app-header">
-          <h1>ScanLake Capture</h1>
+          <h1>
+            {/* Back to the landing page; the mark is the same drawing as public/favicon.svg */}
+            <a className="brand" href="https://scanlake.rocks/" title="ScanLake home">
+              <svg className="logo-mark" width="16" height="16" viewBox="0 0 16 16" shapeRendering="crispEdges" aria-hidden="true">
+                <path fill="currentColor" fillRule="evenodd" d="M7 1h2v1h1v1h1v1h1v1h1v1h1v1h1v2h-1v1h-1v1h-1v1h-1v1h-1v1h-1v1H7v-1H6v-1H5v-1H4v-1H3v-1H2V9H1V7h1V6h1V5h1V4h1V3h1V2h1zM7 3h2v1h1v1h1v1h1v1h1v2h-1v1h-1v1h-1v1h-1v1H7v-1H6v-1H5v-1H4V9H3V7h1V6h1V5h1V4h1zM7 5h2v1h1v1h1v2h-1v1h-1v1H7v-1H6V9H5V7h1V6h1z" />
+              </svg>
+              ScanLake
+            </a>{' '}
+            Capture
+          </h1>
           <div className="header-right">
             {profile.userName && (
               <span className="user-badge">

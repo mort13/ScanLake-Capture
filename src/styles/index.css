@@ -720,7 +720,10 @@ label {
 /* Display font for titles; VT323 needs a larger size */
 .app-header { border-bottom-color: var(--line-bright); }
 .app-header h1 { font-size: 2rem; color: var(--amber-hi); text-transform: uppercase; letter-spacing: 1px; text-shadow: var(--glow-strong); }
-.app-header h1::before { content: '◈ '; }
+/* "◈ ScanLake" links back to the landing page; inverse video on hover like every link */
+.app-header .brand { margin-left: -4px; padding: 0 4px; color: inherit; text-decoration: none; }
+.app-header .brand:hover { color: var(--bg); }
+.app-header .logo-mark { width: 24px; height: 24px; vertical-align: -3px; margin-right: 0.3em; }
 .session-list-header h2, .session-view-header h2, .modal h2 { font-size: 1.7rem; font-weight: 400; text-transform: uppercase; color: var(--amber-hi); }
 .scan-list h3, .modal h3 { font-size: 1.35rem; font-weight: 400; text-transform: uppercase; color: var(--amber); }
 .materials-section h4 { text-transform: uppercase; letter-spacing: 0.5px; font-size: 0.8rem; color: var(--text-dim); }
