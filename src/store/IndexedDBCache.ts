@@ -140,16 +140,28 @@ async function getCaptureRegion(): Promise<CaptureRegion | null> {
   return (entry?.data as CaptureRegion) ?? null
 }
 
-// Scaling factor — persisted per profile file so it only needs to be found once
-async function saveScalingFactor(profileFile: string, factor: number): Promise<void> {
-  const db = await getDB()
-  await db.put('ocrSettings', { key: `scalingFactor_${profileFile}`, data: factor })
+// HUD scale — remembered per profile file, with the shared screen's height it was found on, so
+// the next search starts there (older saves are a bare number with no height)
+export interface RememberedScale {
+  scale: number
+  sourceHeight: number | null
 }
 
-async function getScalingFactor(profileFile: string): Promise<number | null> {
+async function saveScalingFactor(profileFile: string, scale: number, sourceHeight: number): Promise<void> {
+  const db = await getDB()
+  await db.put('ocrSettings', { key: `scalingFactor_${profileFile}`, data: { scale, sourceHeight } })
+}
+
+async function getScalingFactor(profileFile: string): Promise<RememberedScale | null> {
   const db = await getDB()
   const entry = await db.get('ocrSettings', `scalingFactor_${profileFile}`)
-  return entry !== undefined ? (entry.data as number) : null
+  const data: unknown = entry?.data
+  if (typeof data === 'number') return data > 0 ? { scale: data, sourceHeight: null } : null
+  if (data && typeof data === 'object' && typeof (data as RememberedScale).scale === 'number') {
+    const { scale, sourceHeight } = data as RememberedScale
+    return { scale, sourceHeight: typeof sourceHeight === 'number' ? sourceHeight : null }
+  }
+  return null
 }
 
 async function deleteScalingFactor(profileFile: string): Promise<void> {

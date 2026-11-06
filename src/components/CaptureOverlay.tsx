@@ -1,6 +1,6 @@
 import { useState, useRef, useCallback, useEffect } from 'react'
 import type { CaptureRegion } from '../ocr/types'
-import { ensureStream } from '../ocr/ScreenCapture'
+import { ensureStream, regionForSource } from '../ocr/ScreenCapture'
 
 interface Props {
   onRegionSelected: (region: CaptureRegion) => void
@@ -47,6 +47,11 @@ export function CaptureOverlay({ onRegionSelected, onCancel, existingRegion }: P
 
         const bitmap = await createImageBitmap(offscreen)
         if (!cancelled) {
+          // Show the saved region where it lands on this screen (none after an aspect-ratio change)
+          setRect(r => {
+            if (!r) return r
+            try { return regionForSource(r, w, h) } catch { return null }
+          })
           setBgImage(bitmap)
           setLoading(false)
         }
@@ -92,11 +97,14 @@ export function CaptureOverlay({ onRegionSelected, onCancel, existingRegion }: P
   const getCanvasCoords = useCallback((e: React.MouseEvent<HTMLCanvasElement>): { x: number; y: number } => {
     const canvas = canvasRef.current!
     const br = canvas.getBoundingClientRect()
-    const scaleX = canvas.width / br.width
-    const scaleY = canvas.height / br.height
+    // object-fit: contain letterboxes the screen inside the element whenever their aspect ratios
+    // differ (an ultrawide screen, or just the toolbar's height): map through the drawn area
+    const fit = Math.min(br.width / canvas.width, br.height / canvas.height)
+    const left = br.left + (br.width - canvas.width * fit) / 2
+    const top = br.top + (br.height - canvas.height * fit) / 2
     return {
-      x: Math.round((e.clientX - br.left) * scaleX),
-      y: Math.round((e.clientY - br.top) * scaleY),
+      x: Math.min(canvas.width, Math.max(0, Math.round((e.clientX - left) / fit))),
+      y: Math.min(canvas.height, Math.max(0, Math.round((e.clientY - top) / fit))),
     }
   }, [])
 
@@ -123,8 +131,8 @@ export function CaptureOverlay({ onRegionSelected, onCancel, existingRegion }: P
   }, [])
 
   const handleConfirm = () => {
-    if (rect && rect.width > 10 && rect.height > 10) {
-      onRegionSelected(rect)
+    if (rect && rect.width > 10 && rect.height > 10 && bgImage) {
+      onRegionSelected({ ...rect, sourceWidth: bgImage.width, sourceHeight: bgImage.height })
     }
   }
 

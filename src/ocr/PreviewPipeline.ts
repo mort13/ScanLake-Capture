@@ -1,68 +1,12 @@
-import type { CaptureRegion, RoiConfig, AnchorMatch, AnchorConfig } from './types'
-import { loadProfile, getProfileConfig, loadAllAnchors, scaleAnchorImages, DEFAULT_PROFILE_FILE } from './ProfileLoader'
+import type { CaptureRegion, RoiConfig, AnchorMatch } from './types'
+import { loadProfile, getProfileConfig, loadAllAnchors, DEFAULT_PROFILE_FILE } from './ProfileLoader'
 import { captureFrame } from './ScreenCapture'
-import {
-  detectAnchors,
-  detectSubAnchors,
-  computeAffineTransform,
-  applyTransform,
-  getScale,
-  type AffineTransform,
-} from './AnchorDetector'
+import { applyTransform, getScale, type AffineTransform, type AnchorNearMiss } from './AnchorDetector'
+import { findHud } from './HudSearch'
 import { extractRoi } from './RoiExtractor'
 import { getSegmentBoundaries } from './CharSegmenter'
 import { recognizeRoi } from './Inference'
-import { IndexedDBCache } from '../store/IndexedDBCache'
 import { UserStore } from '../store/UserStore'
-
-/** Scale candidates to probe when no cached scaling factor exists.
- * Reference resolution: 2560×1440. Each entry = target_width / 2560.
- * 1.0=2560×1440  0.75=1920×1080  1.5=3840×2160  0.5=1280×720
- * 0.625=1600×900  0.8=2048×1152  1.25=3200×1800  2.0=5120×2880
- * Ultrawide (3440×1440, 2560×1080 etc.) share height with a 16:9 tier — no extra entry needed.
- */
-const SCALE_CANDIDATES = [1.0, 0.75, 1.5, 0.5, 0.625, 0.8, 1.25, 2.0]
-
-async function resolveScalingFactor(
-  frameImage: ImageData,
-  anchors: AnchorConfig[],
-  baseImages: Map<string, ImageData>,
-  profileFile: string,
-  onProgress?: (msg: string) => void,
-): Promise<number> {
-  // Manual resolution override — skip cache and detection entirely
-  const manualRes = UserStore.loadSettings().captureResolution
-  if (manualRes) {
-    const h = parseInt(manualRes.split('x')[1], 10)
-    if (h > 0) return h / 1440
-  }
-
-  const cached = await IndexedDBCache.getScalingFactor(profileFile)
-  if (cached !== null) return cached
-
-  onProgress?.('Detecting display scale...')
-  let bestScale = 1.0
-  let bestMatchCount = 0
-  let bestScore = -1
-
-  for (const scale of SCALE_CANDIDATES) {
-    const scaledImages = await scaleAnchorImages(baseImages, scale)
-    const { matches } = detectAnchors(frameImage, anchors, scaledImages)
-    const score = matches.reduce((s, m) => s + m.confidence, 0)
-    if (
-      matches.length > bestMatchCount ||
-      (matches.length === bestMatchCount && score > bestScore)
-    ) {
-      bestMatchCount = matches.length
-      bestScore = score
-      bestScale = scale
-    }
-    if (matches.length >= anchors.length) break
-  }
-
-  await IndexedDBCache.saveScalingFactor(profileFile, bestScale)
-  return bestScale
-}
 
 export interface RoiPreviewData {
   roi: RoiConfig
@@ -101,13 +45,13 @@ export interface PipelinePreviewResult {
   frameWidth: number
   /** Height of the captured frame in pixels */
   frameHeight: number
-  /** Resolved display scale factor (template pixels × scale = frame pixels) */
+  /** HUD scale the anchors matched at (template pixels × scale = frame pixels) */
   resolvedScale: number
   profileStatus: PreviewProfileStatus
   anchorMatches: AnchorMatch[]
-  /** Best NCC position for each anchor that did NOT meet its threshold */
-  anchorNearMisses: import('./AnchorDetector').AnchorNearMiss[]
-  /** Pixel-space search regions for main anchors that have one defined */
+  /** Best NCC position for each anchor that was not accepted (below threshold or out of the HUD's layout) */
+  anchorNearMisses: AnchorNearMiss[]
+  /** Pixel-space search regions for main anchors (none: main anchors are searched in the whole region) */
   anchorSearchRegions: Map<string, { x: number; y: number; width: number; height: number }>
   subAnchorMatches: Map<string, AnchorMatch>
   subAnchorSearchRegions: Map<string, { x: number; y: number; width: number; height: number }>
@@ -129,34 +73,22 @@ export async function runPreviewPipeline(
   const baseAnchorImages = await loadAllAnchors(profileCfg.anchors, profileCfg.sub_anchors)
 
   onProgress?.('Capturing screen...')
-  const frameImage = await captureFrame(region)
-
-  // Resolve display scaling (cached; detected on first run)
-  const scalingFactor = await resolveScalingFactor(
-    frameImage, profileCfg.anchors, baseAnchorImages, profileFile, onProgress,
-  )
-  const anchorImages = await scaleAnchorImages(baseAnchorImages, scalingFactor)
+  const { image: frameImage, sourceHeight } = await captureFrame(region)
 
   onProgress?.('Detecting anchors...')
-  const { matches: anchorMatches, nearMisses: anchorNearMisses, anchorSearchRegions } = detectAnchors(frameImage, profileCfg.anchors, anchorImages)
+  const hud = await findHud(frameImage, sourceHeight, profileFile, profileCfg, baseAnchorImages, onProgress)
+  const { matches: anchorMatches, nearMisses: anchorNearMisses } = hud.result
+  const anchorSearchRegions = new Map<string, { x: number; y: number; width: number; height: number }>()
   const foundAnchorNames = anchorMatches.map(m => m.name)
-  const missingAnchorNames = profileCfg.anchors.map(a => a.name).filter(n => !foundAnchorNames.includes(n))
 
-  let transform: AffineTransform | null = null
-  let transformError: string | null = null
-  let subAnchorMatches = new Map<string, AnchorMatch>()
-  let subAnchorSearchRegions = new Map<string, { x: number; y: number; width: number; height: number }>()
+  const transform: AffineTransform | null = hud.transform
+  let transformError: string | null = hud.error
+  const subAnchorMatches = hud.subAnchors.matches
+  const subAnchorSearchRegions = hud.subAnchors.searchRegions
   const roiPreviews: RoiPreviewData[] = []
 
-  if (anchorMatches.length >= 2) {
+  if (transform) {
     try {
-      onProgress?.('Computing transform...')
-      transform = computeAffineTransform(profileCfg.anchors, anchorMatches)
-
-      onProgress?.('Detecting sub-anchors...')
-      const subAnchorResult = detectSubAnchors(frameImage, profileCfg.sub_anchors, anchorImages, transform)
-      subAnchorMatches = subAnchorResult.matches
-      subAnchorSearchRegions = subAnchorResult.searchRegions
 
       onProgress?.('Extracting ROIs...')
       const scale = getScale(transform)
@@ -211,9 +143,8 @@ export async function runPreviewPipeline(
     } catch (e) {
       transformError = e instanceof Error ? e.message : 'Transform failed'
     }
-  } else {
-    transformError = `Only ${anchorMatches.length} anchor(s) found (need ≥2). Missing: ${missingAnchorNames.join(', ')}`
   }
+  const missingAnchorNames = profileCfg.anchors.map(a => a.name).filter(n => !foundAnchorNames.includes(n))
 
   const foundSubAnchorNames = [...subAnchorMatches.keys()]
   const missingSubAnchorNames = profileCfg.sub_anchors.map(s => s.name).filter(n => !foundSubAnchorNames.includes(n))
@@ -222,7 +153,7 @@ export async function runPreviewPipeline(
     frameImage,
     frameWidth: frameImage.width,
     frameHeight: frameImage.height,
-    resolvedScale: scalingFactor,
+    resolvedScale: hud.result.scale,
     profileStatus: {
       masterName: masterProfile.name,
       profileName: 'scan_results',

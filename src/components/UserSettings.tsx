@@ -195,7 +195,7 @@ export function UserSettings({ open, onClose }: Props) {
               value={settings.captureResolution ?? ''}
               onChange={e => setSettings(s => ({ ...s, captureResolution: e.target.value }))}
             >
-              <option value="">Auto-detect</option>
+              <option value="">Auto-detect (recommended)</option>
               <option value="2560x1440">2560×1440 (1440p — native)</option>
               <option value="1920x1080">1920×1080 (1080p)</option>
               <option value="3840x2160">3840×2160 (4K)</option>
@@ -207,6 +207,7 @@ export function UserSettings({ open, onClose }: Props) {
               <option value="5120x2880">5120×2880 (5K)</option>
             </select>
           </label>
+          <p className="small-text">Any resolution and aspect ratio works: the HUD is searched at every size, starting from the shared screen's height. A resolution picked here is only tried first.</p>
           <label className="checkbox-label">
             <input type="checkbox" checked={settings.autoDownload}
               onChange={e => setSettings(s => ({ ...s, autoDownload: e.target.checked }))} />
@@ -252,7 +253,7 @@ export function UserSettings({ open, onClose }: Props) {
           >
             Reset Scale Detection
           </button>
-          <p className="small-text">Forces scale re-detection on the next capture for the current ship profile. Only relevant when Capture Resolution is set to Auto-detect.</p>
+          <p className="small-text">Forgets the HUD size remembered for the current ship profile, so the next capture searches all sizes again (e.g. after changing the in-game FOV).</p>
           <button onClick={handleClearCache} className="btn-danger">
             Clear All Cache
           </button>

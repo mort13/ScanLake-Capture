@@ -80,6 +80,9 @@ export interface CaptureRegion {
   y: number
   width: number
   height: number
+  /** Size of the shared screen the region was selected on (absent in older saves) */
+  sourceWidth?: number
+  sourceHeight?: number
 }
 
 export interface RoiResult {

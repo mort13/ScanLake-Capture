@@ -54,28 +54,3 @@ export async function loadAllAnchors(
   await Promise.all([...paths].map(p => loadAnchorImage(p)))
   return anchorImages
 }
-
-/**
- * Scale all anchor images by a given factor.
- * Returns a NEW map — the original anchorImages cache is unchanged.
- * Scale factor 1.0 returns the same map reference (no copy).
- */
-export async function scaleAnchorImages(
-  images: Map<string, ImageData>,
-  scale: number,
-): Promise<Map<string, ImageData>> {
-  if (scale === 1.0) return images
-  const result = new Map<string, ImageData>()
-  for (const [path, img] of images) {
-    const w = Math.max(1, Math.round(img.width * scale))
-    const h = Math.max(1, Math.round(img.height * scale))
-    const src = new OffscreenCanvas(img.width, img.height)
-    const srcCtx = src.getContext('2d')!
-    srcCtx.putImageData(img, 0, 0)
-    const dst = new OffscreenCanvas(w, h)
-    const dstCtx = dst.getContext('2d')!
-    dstCtx.drawImage(src, 0, 0, w, h)
-    result.set(path, dstCtx.getImageData(0, 0, w, h))
-  }
-  return result
-}

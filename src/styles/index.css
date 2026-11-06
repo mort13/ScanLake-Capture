@@ -478,6 +478,9 @@ label {
 .capture-overlay-canvas {
   flex: 1;
   width: 100%;
+  /* a flex item's automatic minimum is the canvas's own height at this width, which is taller
+     than the window when the window is wider than the shared screen: let it shrink and letterbox */
+  min-height: 0;
   object-fit: contain;
   cursor: crosshair;
 }
