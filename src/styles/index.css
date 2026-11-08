@@ -201,6 +201,16 @@ label {
   margin-bottom: 20px;
 }
 
+/* Where the ship was (the game's debug text), read-only */
+.scan-position {
+  margin: -8px 0 16px;
+  font-size: 0.85rem;
+  color: var(--text-dim);
+  overflow-wrap: anywhere;
+  cursor: help;
+}
+.scan-position-missing { cursor: default; color: var(--text-subtle); }
+
 /* Materials */
 .materials-section { margin-bottom: 16px; }
 .materials-section h4 { margin-bottom: 8px; font-size: 0.9rem; }
@@ -605,6 +615,30 @@ label {
 .debug-nearmiss-info {
   color: #ff8c00;
   cursor: default;
+}
+
+/* Ship position read from the game's debug text */
+.preview-position {
+  display: flex;
+  align-items: baseline;
+  gap: 4px 16px;
+  flex-wrap: wrap;
+  padding: 4px 12px;
+  background: rgba(0,0,0,0.4);
+  font-size: 0.72rem;
+  font-family: monospace;
+  color: var(--text-muted, #888);
+  flex-shrink: 0;
+  border-bottom: 1px solid var(--border);
+}
+.preview-position .muted { color: var(--text-subtle); }
+.preview-position-title { font-weight: 600; }
+.preview-position-title.ok { color: var(--success); }
+.preview-position-lines {
+  margin: 0;
+  font: inherit;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
 }
 
 /* ── Right: ROI grid ─ */

@@ -1,6 +1,7 @@
 import { parquetWriteBuffer } from 'hyparquet-writer'
 import type { Scan, Material } from '../types'
 import type { UserProfile } from '../types'
+import { positionRows } from '../ocr/ShipPosition'
 
 function toInt32(nums: (number | string)[]): Int32Array {
   return Int32Array.from(nums.map(n => Math.round(Number(n))))
@@ -63,6 +64,30 @@ export function buildCompositionsParquet(scans: Scan[], materials: Material[]): 
       { name: 'quality',         data: toInt32(enriched.map(m => m.quality)),               type: 'INT32' },
       { name: 'material_volume', data: toFloat64(enriched.map(m => m.materialVolume)),            type: 'DOUBLE' },
       { name: 'min_confidence',  data: toFloat64(enriched.map(() => 1.0)),                        type: 'DOUBLE' },
+    ],
+  })
+}
+
+/**
+ * The optional `positions` file (format v3): one row per Zone line of each scan's ship position.
+ * Null when no scan has a position — then the batch has no positions file.
+ */
+export function buildPositionsParquet(scans: Scan[]): ArrayBuffer | null {
+  const rows = scans.flatMap(s => positionRows(s.captureId, s.position))
+  if (rows.length === 0) return null
+  return parquetWriteBuffer({
+    columnData: [
+      { name: 'capture_id', data: rows.map(r => r.capture_id),          type: 'STRING' },
+      { name: 'zone_index', data: toInt32(rows.map(r => r.zone_index)), type: 'INT32' },
+      { name: 'zone',       data: rows.map(r => r.zone),                type: 'STRING' },
+      { name: 'pos_x',      data: Float64Array.from(rows, r => r.pos_x), type: 'DOUBLE' },
+      { name: 'pos_y',      data: Float64Array.from(rows, r => r.pos_y), type: 'DOUBLE' },
+      { name: 'pos_z',      data: Float64Array.from(rows, r => r.pos_z), type: 'DOUBLE' },
+      // Empty when CamDir was not read
+      { name: 'cam_dir_x',  data: rows.map(r => r.cam_dir_x),           type: 'DOUBLE' },
+      { name: 'cam_dir_y',  data: rows.map(r => r.cam_dir_y),           type: 'DOUBLE' },
+      { name: 'cam_dir_z',  data: rows.map(r => r.cam_dir_z),           type: 'DOUBLE' },
+      { name: 'confidence', data: Float64Array.from(rows, r => r.confidence), type: 'DOUBLE' },
     ],
   })
 }

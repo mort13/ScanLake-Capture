@@ -1,4 +1,5 @@
 import type { CaptureRegion } from './types'
+import { cornerRect } from './DebugText'
 
 let mediaStream: MediaStream | null = null
 
@@ -22,6 +23,15 @@ export interface CapturedFrame {
   /** Size of the whole shared screen or window */
   sourceWidth: number
   sourceHeight: number
+  /** The debug-text corner of the whole shared screen (top right), when asked for */
+  corner: ImageData | null
+  /** When the frame was grabbed (Date.now()) */
+  capturedAt: number
+}
+
+export interface CaptureOptions {
+  /** Also return the debug-text corner of the same frame */
+  withCorner?: boolean
 }
 
 /**
@@ -50,7 +60,7 @@ export function regionForSource(region: CaptureRegion, width: number, height: nu
 }
 
 /** Capture a single frame from the active screen share, crop to the selected region */
-export async function captureFrame(region: CaptureRegion): Promise<CapturedFrame> {
+export async function captureFrame(region: CaptureRegion, options: CaptureOptions = {}): Promise<CapturedFrame> {
   const stream = await ensureStream()
   const track = stream.getVideoTracks()[0]
 
@@ -74,6 +84,7 @@ export async function captureFrame(region: CaptureRegion): Promise<CapturedFrame
   const fullCanvas = new OffscreenCanvas(fullW, fullH)
   const fullCtx = fullCanvas.getContext('2d')!
   fullCtx.drawImage(video, 0, 0, fullW, fullH)
+  const capturedAt = Date.now()
   video.pause()
 
   // Clamp region to frame bounds
@@ -83,7 +94,13 @@ export async function captureFrame(region: CaptureRegion): Promise<CapturedFrame
   const w = Math.max(1, Math.min(r.width, fullW - x))
   const h = Math.max(1, Math.min(r.height, fullH - y))
 
-  return { image: fullCtx.getImageData(x, y, w, h), sourceWidth: fullW, sourceHeight: fullH }
+  let corner: ImageData | null = null
+  if (options.withCorner) {
+    const c = cornerRect(fullW, fullH)
+    if (c.width > 0 && c.height > 0) corner = fullCtx.getImageData(c.x, c.y, c.width, c.height)
+  }
+
+  return { image: fullCtx.getImageData(x, y, w, h), sourceWidth: fullW, sourceHeight: fullH, corner, capturedAt }
 }
 
 /** Stop the active media stream */

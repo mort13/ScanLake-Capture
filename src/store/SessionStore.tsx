@@ -2,7 +2,7 @@ import { createContext, useContext, useReducer, useEffect, useCallback, type Rea
 import { v4 as uuidv4 } from 'uuid'
 import { IndexedDBCache } from './IndexedDBCache'
 import { UserStore } from './UserStore'
-import { buildScansParquet, buildCompositionsParquet, buildConfidencesParquet, downloadBlob } from '../services/ParquetExporter'
+import { buildScansParquet, buildCompositionsParquet, buildConfidencesParquet, buildPositionsParquet, downloadBlob } from '../services/ParquetExporter'
 import { uploadBatch } from '../services/UploadService'
 import { pingSession } from '../services/PulseService'
 import type { Session, Scan, Material } from '../types'
@@ -193,6 +193,8 @@ export function SessionProvider({ children }: { children: ReactNode }) {
     const scansBuffer = buildScansParquet(scans, profile)
     const compsBuffer = buildCompositionsParquet(scans, allMaterials)
     const confsBuffer = buildConfidencesParquet(scans)
+    // Ship positions: always in downloaded batches, uploaded only when the player opted in
+    const positionsBuffer = buildPositionsParquet(scans)
 
     await uploadBatch({
       userId: profile.userId,
@@ -202,12 +204,17 @@ export function SessionProvider({ children }: { children: ReactNode }) {
       scansParquet: scansBuffer,
       compositionsParquet: compsBuffer,
       confidencesParquet: confsBuffer,
+      positionsParquet: positionsBuffer,
+      uploadPositions: settings.uploadPositions === true,
     })
 
     if (settings.autoDownload) {
       downloadBlob(scansBuffer, `${profile.userId}_scans_${session.sessionId}_batch${batchNum}.parquet`)
       downloadBlob(compsBuffer, `${profile.userId}_compositions_${session.sessionId}_batch${batchNum}.parquet`)
       downloadBlob(confsBuffer, `${profile.userId}_confidences_${session.sessionId}_batch${batchNum}.parquet`)
+      if (positionsBuffer) {
+        downloadBlob(positionsBuffer, `${profile.userId}_positions_${session.sessionId}_batch${batchNum}.parquet`)
+      }
     }
 
     const updated: Session = {

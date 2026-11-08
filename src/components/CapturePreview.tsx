@@ -2,6 +2,8 @@ import { useEffect, useRef } from 'react'
 import type { PipelinePreviewResult, RoiPreviewData, PreviewProfileStatus } from '../ocr/PreviewPipeline'
 import type { AnchorMatch } from '../ocr/types'
 import type { AnchorNearMiss } from '../ocr/AnchorDetector'
+import type { DebugTextReading } from '../ocr/PositionReader'
+import { positionConfidence, positionText } from '../ocr/ShipPosition'
 
 interface Props {
   result: PipelinePreviewResult
@@ -27,6 +29,8 @@ export function CapturePreview({ result, onClose }: Props) {
         )}
       </div>
 
+      <ShipPositionBar reading={result.debugText} />
+
       {result.transformError && (
         <div className="preview-error">⚠ {result.transformError}</div>
       )}
@@ -49,6 +53,37 @@ export function CapturePreview({ result, onClose }: Props) {
           </div>
         </div>
       </div>
+    </div>
+  )
+}
+
+// ─── Ship Position (the game's debug text) ──────────────────────────────────
+
+function ShipPositionBar({ reading }: { reading: DebugTextReading }) {
+  const { available, lines, position } = reading
+  // Every line read, with its lowest glyph match score
+  const seen = lines.map(l => `${l.score.toFixed(2)}  ${l.text}`).join('\n')
+  if (!available) {
+    return <div className="preview-position muted">Ship position: no debug font shipped, not read</div>
+  }
+  if (!position) {
+    return (
+      <div className="preview-position" title={seen ? `Read (match score, line):\n${seen}` : undefined}>
+        <span className="preview-position-title muted">Ship position: not read</span>
+        <span className="muted">
+          {lines.length
+            ? `${lines.length} line(s) read, no Zone line with a readable Pos:`
+            : "Turn on the game's debug info (r_DisplayInfo) and each scan also records where the ship was."}
+        </span>
+      </div>
+    )
+  }
+  return (
+    <div className="preview-position" title={`Read (match score, line):\n${seen}`}>
+      <span className="preview-position-title ok">
+        Ship position · match {Math.round(positionConfidence(position) * 100)}%
+      </span>
+      <pre className="preview-position-lines">{positionText(position).join('\n')}</pre>
     </div>
   )
 }

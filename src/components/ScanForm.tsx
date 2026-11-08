@@ -14,6 +14,7 @@ import { IndexedDBCache } from '../store/IndexedDBCache'
 import { runPipeline } from '../ocr/OcrPipeline'
 import { runPreviewPipeline, type PipelinePreviewResult } from '../ocr/PreviewPipeline'
 import { stopStream } from '../ocr/ScreenCapture'
+import { positionDetails, positionSummary, type ShipPosition } from '../ocr/ShipPosition'
 import type { CaptureRegion, OcrStatus as OcrStatusType } from '../ocr/types'
 import type { Session, Scan, Material, MaterialFormRow, ScanFormData, ValidationResult } from '../types'
 
@@ -87,6 +88,21 @@ function validate(form: ScanFormData, _session: Session, getClusterDeposit: (id:
   return { valid: errors.length === 0, errors }
 }
 
+/**
+ * Where the ship was when the staged scan was captured (read-only, the game's debug text);
+ * `missing` is shown when there is none (empty: no line, for players who never turn it on).
+ */
+function ShipPositionLine({ position, missing }: { position: ShipPosition | null; missing: string }) {
+  if (position) {
+    return (
+      <div className="scan-position" title={positionDetails(position)}>
+        Position: {positionSummary(position)}
+      </div>
+    )
+  }
+  return missing ? <div className="scan-position scan-position-missing">{missing}</div> : null
+}
+
 export function ScanForm({ session, onSessionUpdated, preloadedScan, onPreloadConsumed }: Props) {
   const { addScan, updateScan, getClusterDeposit, state } = useSession()
   const [hotkeys, setHotkeys] = useState(() => UserStore.loadSettings().hotkeys)
@@ -107,6 +123,11 @@ export function ScanForm({ session, onSessionUpdated, preloadedScan, onPreloadCo
   const [duplicateWarning, setDuplicateWarning] = useState(false)
   const [editingCaptureId, setEditingCaptureId] = useState<string | null>(null)
   const [editingTimestamp, setEditingTimestamp] = useState<string | null>(null)
+  // Where the ship was (the game's debug text), read-only: of the last capture, or of the scan
+  // being edited (an edit keeps the scan's own position)
+  const [stagedPosition, setStagedPosition] = useState<ShipPosition | null>(null)
+  const [editingPosition, setEditingPosition] = useState<ShipPosition | null>(null)
+  const [positionNote, setPositionNote] = useState('')
 
   // Load data from a previously saved scan into the form
   useEffect(() => {
@@ -126,6 +147,7 @@ export function ScanForm({ session, onSessionUpdated, preloadedScan, onPreloadCo
     setClusterId(scan.clusterId)
     setEditingCaptureId(scan.captureId)
     setEditingTimestamp(scan.timestamp)
+    setEditingPosition(scan.position ?? null)
     setShowErrors(false)
     onPreloadConsumed?.()
   }, [preloadedScan]) // eslint-disable-line react-hooks/exhaustive-deps
@@ -272,11 +294,13 @@ export function ScanForm({ session, onSessionUpdated, preloadedScan, onPreloadCo
         instabilityConf: 1.0,
         volume,
         volumeConf: 1.0,
+        position: editingPosition,
       }
       const mats = materials.map(m => ({ ...m, captureId: editingCaptureId }))
       await updateScan(scan, mats)
       setEditingCaptureId(null)
       setEditingTimestamp(null)
+      setEditingPosition(null)
     } else {
       // Add new scan
       const captureId = uuidv4()
@@ -302,6 +326,7 @@ export function ScanForm({ session, onSessionUpdated, preloadedScan, onPreloadCo
         instabilityConf: 1.0,
         volume,
         volumeConf: 1.0,
+        position: stagedPosition,
       }
       const mats = materials.map(m => ({ ...m, captureId }))
 
@@ -345,6 +370,8 @@ export function ScanForm({ session, onSessionUpdated, preloadedScan, onPreloadCo
       volume: '',
       materials: [{ ...EMPTY_MATERIAL }],
     })
+    setStagedPosition(null)
+    setPositionNote('')
     setShowErrors(false)
   }
 
@@ -370,6 +397,9 @@ export function ScanForm({ session, onSessionUpdated, preloadedScan, onPreloadCo
       })
 
       setForm(prev => ({ ...result.formData, region: prev.region }))
+      setStagedPosition(result.position)
+      // Only players who have the debug text on hear that it was not readable this time
+      setPositionNote(!result.position && result.positionsSeen ? "No position: the game's debug text was not readable" : '')
       const avgConf = result.confidences.size > 0
         ? [...result.confidences.values()].reduce((a, b) => a + b, 0) / result.confidences.size
         : 0
@@ -532,6 +562,11 @@ export function ScanForm({ session, onSessionUpdated, preloadedScan, onPreloadCo
         </label>
       </div>
 
+      <ShipPositionLine
+        position={editingCaptureId ? editingPosition : stagedPosition}
+        missing={editingCaptureId ? '' : positionNote}
+      />
+
       <div className="materials-section">
         <h4>Materials</h4>
         <div className="material-header">
@@ -589,6 +624,7 @@ export function ScanForm({ session, onSessionUpdated, preloadedScan, onPreloadCo
         <button type="button" className="btn-cancel" onClick={() => {
           setEditingCaptureId(null)
           setEditingTimestamp(null)
+          setEditingPosition(null)
           setForm({ deposit: '', region: session.region || '', mass: '', resistance: '', instability: '', volume: '', materials: [{ ...EMPTY_MATERIAL }] })
           setShowErrors(false)
         }}>Cancel Edit</button>

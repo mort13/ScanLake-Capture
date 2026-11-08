@@ -6,6 +6,7 @@ import { findHud } from './HudSearch'
 import { extractRoi } from './RoiExtractor'
 import { getSegmentBoundaries } from './CharSegmenter'
 import { recognizeRoi } from './Inference'
+import { positionReadingAvailable, readDebugText, type DebugTextReading } from './PositionReader'
 import { UserStore } from '../store/UserStore'
 
 export interface RoiPreviewData {
@@ -58,6 +59,8 @@ export interface PipelinePreviewResult {
   transform: AffineTransform | null
   transformError: string | null
   roiPreviews: RoiPreviewData[]
+  /** The ship position in the game's debug text (read whether or not the HUD was found) */
+  debugText: DebugTextReading
 }
 
 export async function runPreviewPipeline(
@@ -73,7 +76,11 @@ export async function runPreviewPipeline(
   const baseAnchorImages = await loadAllAnchors(profileCfg.anchors, profileCfg.sub_anchors)
 
   onProgress?.('Capturing screen...')
-  const { image: frameImage, sourceHeight } = await captureFrame(region)
+  const withCorner = await positionReadingAvailable()
+  const { image: frameImage, sourceHeight, corner, capturedAt } = await captureFrame(region, { withCorner })
+
+  if (corner) onProgress?.('Reading position...')
+  const debugText = await readDebugText(corner, capturedAt)
 
   onProgress?.('Detecting anchors...')
   const hud = await findHud(frameImage, sourceHeight, profileFile, profileCfg, baseAnchorImages, onProgress)
@@ -176,5 +183,6 @@ export async function runPreviewPipeline(
     transform,
     transformError,
     roiPreviews,
+    debugText,
   }
 }

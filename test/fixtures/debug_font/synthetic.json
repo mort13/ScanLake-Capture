@@ -1,0 +1,7 @@
+{
+  "chars": "\"#$%&'()*+,-./0123456789:;<=>?@ABCDEFGHIJKLMNOPQRSTUVWXYZ[\\]^_`abcdefghijklmnopqrstuvwxyz{}~",
+  "advance": 9.0,
+  "cell_w": 9,
+  "cell_h": 15,
+  "source": "test"
+}

@@ -43,9 +43,11 @@ function loadSettings(): UserSettings {
     if (parsed.captureResolution === undefined) {
       parsed.captureResolution = ''
     }
+    // Ship positions are opt-in
+    parsed.uploadPositions = parsed.uploadPositions === true
     return parsed
   }
-  return { autoArchive: false, autoDownload: false, hotkeys: { ...DEFAULT_HOTKEYS }, selectedShipProfile: DEFAULT_SHIP_PROFILE, captureResolution: '' }
+  return { autoArchive: false, autoDownload: false, hotkeys: { ...DEFAULT_HOTKEYS }, selectedShipProfile: DEFAULT_SHIP_PROFILE, captureResolution: '', uploadPositions: false }
 }
 
 function saveSettings(settings: UserSettings): void {

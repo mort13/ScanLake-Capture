@@ -11,29 +11,41 @@ export interface UploadPayload {
   scansParquet: ArrayBuffer
   compositionsParquet: ArrayBuffer
   confidencesParquet: ArrayBuffer
+  /** The optional ship positions file (null when no scan of the batch has a position) ... */
+  positionsParquet?: ArrayBuffer | null
+  /** ... sent only when the player opted in (Settings → Upload ship positions) */
+  uploadPositions?: boolean
 }
 
-export async function uploadBatch(payload: UploadPayload): Promise<boolean> {
+/**
+ * The multipart body of an upload. The `positions` field is there only when the player opted in
+ * and the batch has positions.
+ */
+export function uploadForm(payload: UploadPayload): FormData {
   const formData = new FormData()
   formData.append('userId', payload.userId)
   formData.append('sessionId', payload.sessionId)
   formData.append('batchNumber', String(payload.batchNumber))
   formData.append('isFinal', String(payload.isFinal))
-  formData.append(
-    'scans',
-    new Blob([payload.scansParquet], { type: 'application/octet-stream' }),
-    `${payload.userId}_scans_${payload.sessionId}_batch${payload.batchNumber}.parquet`,
-  )
-  formData.append(
-    'compositions',
-    new Blob([payload.compositionsParquet], { type: 'application/octet-stream' }),
-    `${payload.userId}_compositions_${payload.sessionId}_batch${payload.batchNumber}.parquet`,
-  )
-  formData.append(
-    'confidences',
-    new Blob([payload.confidencesParquet], { type: 'application/octet-stream' }),
-    `${payload.userId}_confidences_${payload.sessionId}_batch${payload.batchNumber}.parquet`,
-  )
+  const files: [string, ArrayBuffer | null | undefined][] = [
+    ['scans', payload.scansParquet],
+    ['compositions', payload.compositionsParquet],
+    ['confidences', payload.confidencesParquet],
+    ['positions', payload.uploadPositions ? payload.positionsParquet : null],
+  ]
+  for (const [kind, data] of files) {
+    if (!data) continue
+    formData.append(
+      kind,
+      new Blob([data], { type: 'application/octet-stream' }),
+      `${payload.userId}_${kind}_${payload.sessionId}_batch${payload.batchNumber}.parquet`,
+    )
+  }
+  return formData
+}
+
+export async function uploadBatch(payload: UploadPayload): Promise<boolean> {
+  const formData = uploadForm(payload)
 
   try {
     const token = await getSessionToken(payload.userId, payload.sessionId)

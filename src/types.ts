@@ -1,3 +1,5 @@
+import type { ShipPosition } from './ocr/ShipPosition'
+
 export interface UserProfile {
   userId: string // uuid4
   userName: string
@@ -32,6 +34,11 @@ export interface UserSettings {
   selectedShipProfile: string
   /** Fixed capture resolution, e.g. "1920x1080". Empty / undefined = auto-detect. */
   captureResolution?: string
+  /**
+   * Upload the ship positions read from the game's debug text (the optional `positions` file).
+   * They are always kept locally and in downloaded batches. Default off.
+   */
+  uploadPositions?: boolean
 }
 
 export type SessionStatus = 'active' | 'closed' | 'archived'
@@ -74,6 +81,8 @@ export interface Scan {
   instabilityConf: number // 1.0
   volume: number
   volumeConf: number // 1.0
+  /** Where the ship was (the game's debug text, r_DisplayInfo); absent when it was not read */
+  position?: ShipPosition | null
 }
 
 export interface Material {

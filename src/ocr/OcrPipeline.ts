@@ -7,6 +7,8 @@ import { findHud } from './HudSearch'
 import { extractRoi } from './RoiExtractor'
 import { recognizeRoi } from './Inference'
 import { mapResultsToForm } from './ResultMapper'
+import { positionReadingAvailable, positionTracker, readShipPosition } from './PositionReader'
+import type { ShipPosition } from './ShipPosition'
 import { UserStore } from '../store/UserStore'
 
 export type ProgressCallback = (stage: string) => void
@@ -16,6 +18,9 @@ let _modelsLoaded = false
 /**
  * Run the complete OCR pipeline:
  * capture → find HUD (any scale) → affine transform → ROI extract → filter → infer → map
+ *
+ * Once the HUD is found, the debug-text corner of the same frame is read for the ship position
+ * (when a debug font is shipped); `position` is that one, or the last one read if still fresh.
  */
 export async function runPipeline(
   region: CaptureRegion,
@@ -24,6 +29,10 @@ export async function runPipeline(
   formData: ScanFormData
   confidences: Map<string, number>
   roiResults: Map<string, RoiResult>
+  /** Where the ship was (the game's debug text), or null */
+  position: ShipPosition | null
+  /** The debug text has been read at least once on this page (the player has it on) */
+  positionsSeen: boolean
 }> {
   // 1. Load profile + anchors + models
   onProgress?.('Loading profile...')
@@ -42,7 +51,8 @@ export async function runPipeline(
 
   // 2. Capture frame
   onProgress?.('Capturing screen...')
-  const { image: frameImage, sourceHeight } = await captureFrame(region)
+  const withCorner = await positionReadingAvailable()
+  const { image: frameImage, sourceHeight, corner, capturedAt } = await captureFrame(region, { withCorner })
 
   // 3. Find the HUD's anchors at whatever size it is drawn, and the reference → frame transform
   onProgress?.('Detecting anchors...')
@@ -50,6 +60,10 @@ export async function runPipeline(
   if (!hud.transform) throw new Error(hud.error ?? 'Anchor detection failed')
   const { transform } = hud
   const subAnchorMatches = hud.subAnchors.matches
+
+  // 3b. The HUD is locked: where was the ship?
+  if (corner) onProgress?.('Reading position...')
+  const position = await readShipPosition(corner, capturedAt)
 
   // 4. Extract and recognize each ROI
   const roiResults = new Map<string, RoiResult>()
@@ -82,5 +96,5 @@ export async function runPipeline(
   const { formData, confidences } = mapResultsToForm(roiResults, masterProfile)
 
   onProgress?.('Done')
-  return { formData, confidences, roiResults }
+  return { formData, confidences, roiResults, position, positionsSeen: positionTracker.seen }
 }

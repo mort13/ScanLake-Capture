@@ -1,0 +1,75 @@
+{
+  "lines": [
+    {
+      "text": "CamDir: -155  45 -179 FOV: 60 Focal: 3.00 FStop: 64.0",
+      "score": 0.7135,
+      "x": 237,
+      "y": 5
+    },
+    {
+      "text": "Zone: MISC Prospector 915731471510 Pos: -0.01m 9.72m 0.41m",
+      "score": 0.8493,
+      "x": 200,
+      "y": 18
+    },
+    {
+      "text": "Zone: ab mine pyro regionb_sml_001 Pos: -18.8743km -3354.15m 12.6396km",
+      "score": 0.7764,
+      "x": 110,
+      "y": 31
+    },
+    {
+      "text": "Zone: SolarSystem 906804011333 Pos: -14427194.5960km 7825291.9814km -14901.0881km",
+      "score": 0.8079,
+      "x": 27,
+      "y": 44
+    },
+    {
+      "text": "Zone: Root Pos: -14427194.5960km 7825291.9814km -14901.0881km",
+      "score": 0.8109,
+      "x": 177,
+      "y": 57
+    }
+  ],
+  "position": {
+    "zones": [
+      {
+        "index": 0,
+        "zone": "MISC_Prospector_915731471510",
+        "x": -0.01,
+        "y": 9.72,
+        "z": 0.41,
+        "confidence": 0.8493
+      },
+      {
+        "index": 1,
+        "zone": "ab_mine_pyro_regionb_sml_001",
+        "x": -18874.3,
+        "y": -3354.15,
+        "z": 12639.6,
+        "confidence": 0.7764
+      },
+      {
+        "index": 2,
+        "zone": "SolarSystem_906804011333",
+        "x": -14427194596.0,
+        "y": 7825291981.4,
+        "z": -14901088.1,
+        "confidence": 0.8079
+      },
+      {
+        "index": 3,
+        "zone": "Root",
+        "x": -14427194596.0,
+        "y": 7825291981.4,
+        "z": -14901088.1,
+        "confidence": 0.8109
+      }
+    ],
+    "camDir": [
+      -155.0,
+      45.0,
+      -179.0
+    ]
+  }
+}

@@ -218,6 +218,12 @@ export function UserSettings({ open, onClose }: Props) {
               onChange={e => setSettings(s => ({ ...s, autoArchive: e.target.checked }))} />
             Auto-archive after successful upload
           </label>
+          <label className="checkbox-label">
+            <input type="checkbox" checked={settings.uploadPositions ?? false}
+              onChange={e => setSettings(s => ({ ...s, uploadPositions: e.target.checked }))} />
+            Upload ship positions
+          </label>
+          <p className="small-text">With the game's debug info on (r_DisplayInfo), each capture also records where the ship was: its CamDir and Zone lines. They are always kept in this browser and in downloaded parquets; tick this to also upload them.</p>
         </div>
 
         <div className="settings-section">
