@@ -78,7 +78,8 @@ export function buildCompositionsParquet(scans: Scan[], materials: Material[]): 
 }
 
 /**
- * The optional `positions` file (format v3): one row per Zone line of each scan's ship position.
+ * The optional `positions` file (format v3): one row per scan with a ship position, its regional
+ * zone (asteroid field, planet, station), else the solar system's.
  * Null when no scan has a position — then the batch has no positions file.
  */
 export function buildPositionsParquet(scans: Scan[]): ArrayBuffer | null {

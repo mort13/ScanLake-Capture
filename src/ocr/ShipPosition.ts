@@ -40,6 +40,14 @@ const METRES: Record<string, number> = { m: 1, km: 1000 }
 // cluster, planet, station) that places a scan on a map.
 const SYSTEM_ZONES = ['SolarSystem', 'Root']
 
+// The only zone inside the solar system this close to its origin is the vehicle's own frame
+// (the pilot sits ~10 m from the ship's origin); planets and asteroid fields are km across.
+const VEHICLE_FRAME_M = 1000
+
+function isSystemZone(zone: string): boolean {
+  return SYSTEM_ZONES.some(s => zone.startsWith(s))
+}
+
 export interface ZonePosition {
   /** 0-based position of the Zone line in the debug text, top first */
   index: number
@@ -104,10 +112,29 @@ export function positionConfidence(position: ShipPosition): number {
 export function localZone(position: ShipPosition): ZonePosition {
   let local = position.zones[0]
   for (const zone of position.zones) {
-    if (SYSTEM_ZONES.some(s => zone.zone.startsWith(s))) break
+    if (isSystemZone(zone.zone)) break
     local = zone
   }
   return local
+}
+
+/**
+ * The one zone that places the scan on a map: the local zone (asteroid field, planet, station),
+ * else the solar system's (`SolarSystem_…`, else `Root`) when the ship is in none; null when only
+ * the vehicle's own frame was read. With a ship in open space the innermost line (the ship) is
+ * also the only one inside the solar system, so `localZone` names it: it is skipped when it sits
+ * next to its origin.
+ */
+export function regionalZone(position: ShipPosition): ZonePosition | null {
+  const zones = position.zones
+  const local = localZone(position)
+  let at = zones.indexOf(local)
+  if (
+    !isSystemZone(local.zone) &&
+    Math.hypot(local.x, local.y, local.z) < VEHICLE_FRAME_M &&
+    zones.filter(z => !isSystemZone(z.zone)).length === 1
+  ) at += 1
+  return zones[at] ?? null
 }
 
 /** x / y / z in km, or in m when the position is within 10 km of the zone's origin. */
@@ -145,7 +172,10 @@ export function positionText(position: ShipPosition): string[] {
   return lines
 }
 
-/** One `positions` parquet row per Zone line of a scan's position (format v3). */
+/**
+ * A `positions` parquet row (format v3): one per scan, its regional zone (asteroid field, planet,
+ * station), else the solar system's. The other Zone lines stay with the scan in this browser.
+ */
 export interface PositionRow {
   capture_id: string
   zone_index: number
@@ -160,9 +190,10 @@ export interface PositionRow {
 }
 
 export function positionRows(captureId: string, position: ShipPosition | null | undefined): PositionRow[] {
-  if (!position) return []
+  const z = position ? regionalZone(position) : null
+  if (!position || !z) return []
   const cam = position.camDir
-  return position.zones.map(z => ({
+  return [{
     capture_id: captureId,
     zone_index: z.index,
     zone: z.zone,
@@ -173,7 +204,7 @@ export function positionRows(captureId: string, position: ShipPosition | null | 
     cam_dir_y: cam ? cam[1] : null,
     cam_dir_z: cam ? cam[2] : null,
     confidence: z.confidence,
-  }))
+  }]
 }
 
 /** The last position that parsed, and when; a scan staged later takes it only while it is fresh. */

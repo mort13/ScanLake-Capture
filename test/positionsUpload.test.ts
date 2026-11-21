@@ -30,24 +30,23 @@ const V3_POSITIONS = [
 ]
 
 describe('the positions parquet', () => {
-  it('has one row per Zone line in the format v3 columns, none for scans without a position', async () => {
+  it('has one row per scan (its regional zone, else the system) in the format v3 columns, none for scans without a position', async () => {
     const buffer = buildPositionsParquet([scan('c-1', POSITION), scan('c-2'), scan('c-3', null)])!
     const schema = parquetMetadata(buffer).schema.slice(1)
     expect(schema.map(c => [c.name, c.type])).toEqual(V3_POSITIONS)
     expect(schema.filter(c => c.type === 'BYTE_ARRAY').every(c => c.converted_type === 'UTF8')).toBe(true)
 
     const rows = await parquetReadObjects({ file: buffer })
-    expect(rows).toHaveLength(2)
-    expect(rows[1]).toEqual({
+    expect(rows).toEqual([{
       capture_id: 'c-1', zone_index: 2, zone: 'Root', pos_x: -14427194596.0, pos_y: 7825291981.4,
       pos_z: -14901088.1, cam_dir_x: -155, cam_dir_y: 45, cam_dir_z: -179, confidence: 0.91,
-    })
+    }])
   })
 
   it('leaves CamDir empty when it was not read', async () => {
     const buffer = buildPositionsParquet([scan('c-1', { ...POSITION, camDir: null })])!
     const rows = await parquetReadObjects({ file: buffer })
-    expect(rows.map(r => [r.cam_dir_x, r.cam_dir_y, r.cam_dir_z])).toEqual([[null, null, null], [null, null, null]])
+    expect(rows.map(r => [r.cam_dir_x, r.cam_dir_y, r.cam_dir_z])).toEqual([[null, null, null]])
   })
 
   it('is not written when no scan has a position', () => {

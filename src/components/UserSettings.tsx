@@ -223,7 +223,7 @@ export function UserSettings({ open, onClose }: Props) {
               onChange={e => setSettings(s => ({ ...s, uploadPositions: e.target.checked }))} />
             Upload ship positions
           </label>
-          <p className="small-text">With the game's debug info on (r_DisplayInfo), each capture also records where the ship was: its CamDir and Zone lines. They are always kept in this browser and in downloaded parquets; tick this to also upload them.</p>
+          <p className="small-text">With the game's debug info on (r_DisplayInfo), each capture also records where the ship was: its position in the asteroid field, planet or station it is in, else in the solar system. It is always kept in this browser and in downloaded parquets; tick this to also upload it.</p>
         </div>
 
         <div className="settings-section">
