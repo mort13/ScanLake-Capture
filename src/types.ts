@@ -73,7 +73,7 @@ export interface Scan {
   place: string // "none" for now
   deposit: string
   depositConf: number // 1.0
-  mass: number // int
+  mass: number // whole, except deposits under 1 SCU (e.g. 12.34)
   massConf: number // 1.0
   resistance: number // int
   resistanceConf: number // 1.0
