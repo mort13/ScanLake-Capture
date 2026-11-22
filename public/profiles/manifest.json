@@ -1,5 +1,6 @@
 [
   { "key": "mole", "label": "Mole", "file": "mole_relative_anchors_crnn.json" },
   { "key": "golem", "label": "Golem", "file": "golem_relative_anchors_crnn.json" },
-{ "key": "prospector", "label": "Prospector", "file": "prospector_relative_anchors_crnn.json" }
+{ "key": "prospector", "label": "Prospector", "file": "prospector_relative_anchors_crnn.json" },
+  { "key": "hyun", "label": "Hyun", "file": "hyun_relative_anchors_crnn.json" }
 ]
