@@ -8,6 +8,7 @@ import { OcrStatus } from './OcrStatus'
 import { CaptureOverlay } from './CaptureOverlay'
 import { CapturePreview } from './CapturePreview'
 import { DEPOSIT_TYPES } from '../data/deposits'
+import { formatScu, isMilli, massDecimalsAllowed, materialVolume, parseMass, parseVolume, volumeFromOcr } from '../data/volume'
 import { REGIONS_BY_GRAVITY_WELL } from '../data/regions'
 import { useSession } from '../store/SessionStore'
 import { IndexedDBCache } from '../store/IndexedDBCache'
@@ -64,11 +65,18 @@ function validate(form: ScanFormData, _session: Session, getClusterDeposit: (id:
     }
   }
 
-  // Mass / volume ratio
-  const mass = parseFloat(form.mass)
-  const volume = parseFloat(form.volume)
-  if (mass && volume && mass < 100 * volume) {
-    errors.push(`Mass (${mass}) must be at least 100\u00d7 volume (${volume}) = ${(100 * volume).toFixed(1)}`)
+  // Volume (SCU, or mSCU for deposits under 1 SCU) and mass. No mass >= 100x volume rule: the
+  // mSCU volumes it guarded against are read and converted now
+  const mass = parseMass(form.mass)
+  const volume = parseVolume(form.volume)
+  if (form.mass && mass === null) {
+    errors.push(`Mass "${form.mass}" is not valid`)
+  }
+  if (form.volume && volume === null) {
+    errors.push(`Volume "${form.volume}" is not valid (e.g. 12.90, or 25.26m for mSCU)`)
+  }
+  if (mass !== null && !massDecimalsAllowed(form.mass, volume)) {
+    errors.push(`Mass (${form.mass}) has decimals, which the HUD only shows for deposits under 1 SCU (volume in mSCU)`)
   }
 
   // Cluster deposit consistency
@@ -79,10 +87,10 @@ function validate(form: ScanFormData, _session: Session, getClusterDeposit: (id:
 
   // Basic required fields
   if (!form.deposit) errors.push('Deposit type is required')
-  if (!form.mass || isNaN(mass)) errors.push('Mass is required')
+  if (!form.mass) errors.push('Mass is required')
   if (!form.resistance && form.resistance !== '0') errors.push('Resistance is required')
   if (!form.instability && form.instability !== '0') errors.push('Instability is required')
-  if (!form.volume || isNaN(volume)) errors.push('Volume is required')
+  if (!form.volume) errors.push('Volume is required')
   if (completeRows.length === 0) errors.push('At least one complete material row is required')
 
   return { valid: errors.length === 0, errors }
@@ -188,13 +196,12 @@ export function ScanForm({ session, onSessionUpdated, preloadedScan, onPreloadCo
   const completeRows = filledRows.filter(isRowComplete)
   const amountSum = completeRows.reduce((s, r) => s + (parseFloat(r.amount) || 0), 0)
   const tolerance = 0.009 * completeRows.length
-  const massVal = parseFloat(form.mass) || 0
-  const volVal = parseFloat(form.volume) || 0
+  const volumeScu = parseVolume(form.volume)
 
   const checks = {
     completeness: filledRows.length > 0 && filledRows.every(isRowComplete),
     amountSum: completeRows.length > 0 && Math.abs(amountSum - 100) <= tolerance,
-    massVolume: massVal > 0 && volVal > 0 && massVal >= 100 * volVal,
+    volume: volumeScu !== null && massDecimalsAllowed(form.mass, volumeScu),
     clusterDeposit: !clusterDeposit || !form.deposit || clusterDeposit === form.deposit,
   }
 
@@ -255,7 +262,8 @@ export function ScanForm({ session, onSessionUpdated, preloadedScan, onPreloadCo
     if (!validation.valid) return
 
     const norm = (s: string) => s.replace(/,/g, '.')
-    const volume = parseFloat(norm(form.volume))
+    const volume = parseVolume(form.volume)!  // validated: SCU, mSCU converted
+    const mass = parseMass(form.mass)!  // whole, or with decimals under 1 SCU
 
     const materials: Material[] = completeRows.map((r, i) => {
       const amount = Math.round(parseFloat(norm(r.amount)) * 100) / 100
@@ -265,7 +273,7 @@ export function ScanForm({ session, onSessionUpdated, preloadedScan, onPreloadCo
         type: r.type,
         amount,
         quality: parseInt(norm(r.quality), 10),
-        materialVolume: Math.round((volume * amount / 100) * 100) / 100,
+        materialVolume: materialVolume(volume, amount),
         minConfidence: 1.0,
       }
     })
@@ -286,7 +294,7 @@ export function ScanForm({ session, onSessionUpdated, preloadedScan, onPreloadCo
         place: 'none',
         deposit: form.deposit,
         depositConf: 1.0,
-        mass: parseInt(norm(form.mass), 10),
+        mass,
         massConf: 1.0,
         resistance: parseInt(norm(form.resistance), 10),
         resistanceConf: 1.0,
@@ -318,7 +326,7 @@ export function ScanForm({ session, onSessionUpdated, preloadedScan, onPreloadCo
         place: 'none',
         deposit: form.deposit,
         depositConf: 1.0,
-        mass: parseInt(norm(form.mass), 10),
+        mass,
         massConf: 1.0,
         resistance: parseInt(norm(form.resistance), 10),
         resistanceConf: 1.0,
@@ -396,7 +404,8 @@ export function ScanForm({ session, onSessionUpdated, preloadedScan, onPreloadCo
         setOcrMessage(stage)
       })
 
-      setForm(prev => ({ ...result.formData, region: prev.region }))
+      // A milli volume read without its "m" ("25.266") goes into the form as "25.26m"
+      setForm(prev => ({ ...result.formData, volume: volumeFromOcr(result.formData.volume), region: prev.region }))
       setStagedPosition(result.position)
       // Only players who have the debug text on hear that it was not readable this time
       setPositionNote(!result.position && result.positionsSeen ? "No position: the game's debug text was not readable" : '')
@@ -470,7 +479,7 @@ export function ScanForm({ session, onSessionUpdated, preloadedScan, onPreloadCo
   }
 
   // Calculate material_volume preview
-  const volume = parseFloat(form.volume) || 0
+  const volume = volumeScu ?? 0
 
   return (
     <div className="scan-form">
@@ -538,8 +547,9 @@ export function ScanForm({ session, onSessionUpdated, preloadedScan, onPreloadCo
         </label>
         <label>
           Mass
-          <input type="number" step="1" min="0" value={form.mass}
-            onChange={e => updateField('mass', e.target.value)} placeholder="Mass (int)"
+          <input type="text" inputMode="decimal" value={form.mass}
+            onChange={e => updateField('mass', e.target.value)} placeholder="Mass"
+            title="Whole numbers; deposits under 1 SCU show decimals (e.g. 12.34)"
             style={!form.mass ? { borderColor: 'var(--warning)' } : undefined} />
         </label>
         <label>
@@ -558,6 +568,7 @@ export function ScanForm({ session, onSessionUpdated, preloadedScan, onPreloadCo
           Volume
           <input type="text" inputMode="decimal" value={form.volume}
             onChange={e => updateField('volume', e.target.value.replace(',', '.'))} placeholder="Volume"
+            title="SCU as shown; under 1 SCU the HUD shows mSCU: type it with its m (25.26m)"
             style={!form.volume ? { borderColor: 'var(--warning)' } : undefined} />
         </label>
       </div>
@@ -587,7 +598,7 @@ export function ScanForm({ session, onSessionUpdated, preloadedScan, onPreloadCo
               isPartial={isRowFilled(row) && !isRowComplete(row)}
             />
             <span className="mat-volume-calc">
-              {isRowComplete(row) ? (volume * parseFloat(row.amount) / 100).toFixed(2) : '-'}
+              {isRowComplete(row) ? formatScu(materialVolume(volume, parseFloat(row.amount))) : '-'}
             </span>
           </div>
         ))}
@@ -597,8 +608,8 @@ export function ScanForm({ session, onSessionUpdated, preloadedScan, onPreloadCo
       <div className="validation-checks">
         <ValidationBadge label="Rows complete" valid={checks.completeness} />
         <ValidationBadge label={`Sum: ${amountSum.toFixed(2)}%`} valid={checks.amountSum} />
-        <ValidationBadge label="Mass/Volume" valid={checks.massVolume}
-          message={massVal && volVal ? `${massVal} \u2265 ${(100 * volVal).toFixed(1)}` : ''} />
+        <ValidationBadge label="Volume" valid={checks.volume}
+          message={volumeScu !== null && isMilli(form.volume) ? `${form.volume} = ${formatScu(volumeScu)} SCU` : ''} />
         <ValidationBadge label="Cluster deposit" valid={checks.clusterDeposit} />
       </div>
 

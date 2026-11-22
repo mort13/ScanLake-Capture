@@ -1,4 +1,5 @@
 import type { ModelMeta } from './types'
+import { isVolumeRead } from '../data/volume'
 
 /**
  * Greedy CTC decode: collapse consecutive duplicates and remove blanks.
@@ -82,8 +83,11 @@ export function computeConfidence(
  * Validate decoded text against expected format patterns from the metadata.
  * Returns true if the text matches any known format, or if no formats are defined.
  */
-export function validateFormat(text: string, formatPattern: string, meta: ModelMeta): boolean {
+export function validateFormat(text: string, formatPattern: string, meta: ModelMeta, field = ''): boolean {
   if (!meta.formats || !text) return true
+  // Volumes: SCU as shown, or a milli-SCU volume ("25.26m"), which a model without "m" reads
+  // with an extra character after the decimals (the form turns it back into "25.26m")
+  if (field === 'volume') return isVolumeRead(text)
 
   // If a specific format_pattern hint is provided by the ROI, use heuristic matching
   if (formatPattern) {

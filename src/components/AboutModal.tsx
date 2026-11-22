@@ -35,7 +35,8 @@ export function AboutModal({ open, onClose }: Props) {
           <li>
             <strong>Review and correct</strong> — Inspect the detected material rows. Edit any
             field that was mis-read, then click <em>Save Scan</em>. A green validation badge
-            confirms the data is valid (amounts sum to 100 %, mass/volume ratio is in range, etc.).
+            confirms the data is valid (amounts sum to 100 %, the volume is readable, etc.). Deposits
+            under 1 SCU show their volume in mSCU: keep its m (25.26m), it is stored in SCU.
           </li>
           <li>
             <strong>Close or archive a session</strong> — When you are done scanning a cluster,

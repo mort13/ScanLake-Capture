@@ -110,7 +110,7 @@ async function recognizeCrnn(
   const confidence = computeConfidence(logProbs, timeSteps, meta.numClasses, blankIdx)
 
   // Format validation: reject invalid sequences
-  if (text && !validateFormat(text, roi.format_pattern, meta)) {
+  if (text && !validateFormat(text, roi.format_pattern, meta, roi.name)) {
     return { roiName: roi.name, text: '', confidence: 0 }
   }
 
