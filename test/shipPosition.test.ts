@@ -9,6 +9,7 @@ import {
   positionRows,
   positionSummary,
   positionText,
+  regionalZone,
   type ShipPosition,
 } from '../src/ocr/ShipPosition'
 import { LINES, OTHER_LINES } from './helpers'
@@ -90,14 +91,40 @@ describe('PositionTracker', () => {
   })
 })
 
+const zones = (...lines: [string, number, number, number][]): ShipPosition => ({
+  zones: lines.map(([zone, x, y, z], index) => ({ index, zone, x, y, z, confidence: 1 })),
+  camDir: null,
+})
+const SHIP: [string, number, number, number] = ['MISC_Prospector_915731471510', -0.01, 9.72, 0.41]
+const SYSTEM: [string, number, number, number] = ['SolarSystem_906804011333', -14427194596, 7825291981.4, -14901088.1]
+const ROOT: [string, number, number, number] = ['Root', -14427194596, 7825291981.4, -14901088.1]
+
+describe('regionalZone', () => {
+  it.each([
+    // in an asteroid field, at a planet, at a station: that zone
+    [zones(SHIP, ['ab_mine_pyro_regionb_sml_001', -18874.3, -3354.15, 12639.6], SYSTEM, ROOT), 'ab_mine_pyro_regionb_sml_001'],
+    [zones(['pyro3', -71975.2, 403989.2, -54153.1], SYSTEM, ROOT), 'pyro3'],
+    [zones(SHIP, ['social_001_keeger_segment_rckcrk_102', 3417.41, 41098.9, 14287.3], SYSTEM), 'social_001_keeger_segment_rckcrk_102'],
+    // in no zone (open space, a cluster outside any field): the solar system's
+    [zones(SHIP, SYSTEM, ROOT), SYSTEM[0]],
+    [zones(SHIP, ROOT), 'Root'], // the SolarSystem line was not read
+    [zones(SYSTEM, ROOT), SYSTEM[0]],
+    [zones(SHIP), null], // only the ship's own frame: nothing to place the scan by
+  ])('%#', (position, regional) => {
+    expect(regionalZone(position)?.zone ?? null).toBe(regional)
+  })
+})
+
 describe('positionRows', () => {
-  it('has one row per Zone line, CamDir on each', () => {
+  it('has one row per scan, the regional zone, else the solar system', () => {
     const rows = positionRows('c-1', POSITION)
-    expect(rows).toHaveLength(2)
-    expect(rows[1]).toEqual({
+    expect(rows).toEqual([{
       capture_id: 'c-1', zone_index: 2, zone: 'Root', pos_x: -14427194596.0, pos_y: 7825291981.4,
       pos_z: -14901088.1, cam_dir_x: -155, cam_dir_y: 45, cam_dir_z: -179, confidence: 0.91,
-    })
+    }])
+    const inField = positionRows('c-2', parsePosition(LINES))
+    expect(inField.map(r => [r.zone_index, r.zone])).toEqual([[1, 'ab_mine_pyro_regionb_sml_001']])
+    expect(positionRows('c-3', zones(SHIP))).toEqual([])
   })
 
   it('leaves CamDir empty when it was not read, and has no rows without a position', () => {

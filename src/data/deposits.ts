@@ -1,5 +1,6 @@
 export const DEPOSIT_TYPES = [
   'Agricium',
+  'Aslarite',
   'Beryl',
   'Borase',
   'Copper',
@@ -24,7 +25,18 @@ export const DEPOSIT_TYPES = [
   'Torite',
   'Ouratite',
   'Corundum',
-  'Aluminum'
+  'Aluminum',
+  'Aphorite',
+  'Beradom',
+  'Carinite',
+  'Dolivine',
+  'Feynmaline',
+  'Glacosite',
+  'Hadanite',
+  'Jaclium',
+  'Janalite',
+  'Sadaryx',
+  'Saldynium'
 ] as const
 
 export const SYSTEMS = [
