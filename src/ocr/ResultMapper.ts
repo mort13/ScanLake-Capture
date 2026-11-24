@@ -2,6 +2,9 @@ import type { RoiResult, OutputSchemaNode, MasterProfile } from './types'
 import type { ScanFormData, MaterialFormRow } from '../types'
 import { DEPOSIT_TYPES } from '../data/deposits'
 import { MATERIAL_TYPES } from '../data/materials'
+import { pickDeposit, pickMaterial, rowMaterials } from './DepositPrior'
+
+const SLOTS = ['material1', 'material2', 'material3', 'material4', 'material5']
 
 /**
  * Map OCR results from ROIs into a ScanFormData object that can directly populate the form.
@@ -35,22 +38,40 @@ export function mapResultsToForm(
   const firstKey = flat.keys().next().value as string | undefined
   const prefix = firstKey?.startsWith('scan.') ? 'scan.' : ''
 
-  // Scalar fields
-  const rawDeposit = get(`${prefix}deposit_name`) || get(`${prefix}deposit`)
-  const deposit = fuzzyMatch(rawDeposit, DEPOSIT_TYPES as unknown as string[])
-  if (deposit) confidences.set('deposit', confidences.get(`${prefix}deposit_name`) ?? confidences.get(`${prefix}deposit`) ?? 0)
+  // Scalar fields. The deposit is read together with the material slots: their names settle an
+  // unsure deposit read between deposits that can hold them (data/deposit_materials.json)
+  const depositKey = flat.has(`${prefix}deposit_name`) ? `${prefix}deposit_name` : `${prefix}deposit`
+  const depositResult = flat.get(depositKey)
+  let deposit: string
+  if (depositResult?.candidates) {
+    const slots = SLOTS.map(slot => flat.get(`${prefix}composition.${slot}.name`)?.candidates)
+    const pick = pickDeposit(depositResult.candidates, slots, depositOfLabel, materialOfLabel)
+    confidences.set(depositKey, pick.prob)
+    deposit = pick.prob >= CONFIDENCE_THRESHOLD ? depositOfLabel(pick.label) : ''
+  } else {
+    deposit = fuzzyMatch(get(depositKey), DEPOSIT_TYPES as unknown as string[])
+  }
+  if (deposit) confidences.set('deposit', confidences.get(depositKey) ?? 0)
 
   const mass = get(`${prefix}mass`)
   const resistance = getNumeric(`${prefix}resistance`)
   const instability = get(`${prefix}instability`)
   const volume = get(`${prefix}volume`)
 
-  // Materials: named slots material1…material5
+  // Materials: named slots material1…material5, each narrowed to what a confidently read
+  // deposit can show in that row
   const materials: MaterialFormRow[] = []
-  for (const slot of ['material1', 'material2', 'material3', 'material4', 'material5']) {
+  for (const [row, slot] of SLOTS.entries()) {
+    const allowed = deposit ? rowMaterials(deposit, row) : null
     const base = `${prefix}composition.${slot}`
-    const rawName = flat.get(`${base}.name`)?.text.trim() ?? ''
-    const nameConf = flat.get(`${base}.name`)?.confidence ?? 0
+    const nameResult = flat.get(`${base}.name`)
+    let rawName = nameResult?.text.trim() ?? ''
+    let nameConf = nameResult?.confidence ?? 0
+    if (allowed && nameResult?.candidates) {
+      const pick = pickMaterial(nameResult.candidates, allowed, materialOfLabel)
+      rawName = materialOfLabel(pick.label)
+      nameConf = pick.prob
+    }
     if (rawName && nameConf >= CONFIDENCE_THRESHOLD) {
       confidences.set(`${base}.name`, nameConf)
     }
@@ -102,6 +123,20 @@ function flattenSchema(
 
   walk(nodes, '')
   return result
+}
+
+/** A word model label as a deposit name ("aluminium" → "Aluminum"); '' for blank */
+function depositOfLabel(label: string): string {
+  const name = label.replace(/_/g, ' ').trim()
+  if (['empty', 'none'].includes(name.toLowerCase())) return ''
+  return fuzzyMatch(name, DEPOSIT_TYPES as unknown as string[])
+}
+
+/** A word model label as a material name ("inert_materials" → "Inert Materials"); '' for blank */
+function materialOfLabel(label: string): string {
+  const name = label.replace(/_/g, ' ').trim()
+  if (['empty', 'none'].includes(name.toLowerCase())) return ''
+  return fuzzyMatch(name, MATERIAL_TYPES as unknown as string[])
 }
 
 /** Fuzzy match a recognized string to the closest known value using Levenshtein distance */

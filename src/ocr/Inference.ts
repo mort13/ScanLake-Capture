@@ -53,30 +53,33 @@ async function recognizeWord(
   const numClasses = labels.length
 
   // Output is [1, numClasses] — simple argmax classification
-  let bestIdx = 0
-  let bestVal = -Infinity
   const classCount = dims.length === 2 ? dims[1] : data.length
-  for (let i = 0; i < Math.min(classCount, numClasses); i++) {
-    if (data[i] > bestVal) { bestVal = data[i]; bestIdx = i }
+  const probs = softmax(data, Math.min(classCount, numClasses))
+  let bestIdx = 0
+  for (let i = 1; i < probs.length; i++) {
+    if (probs[i] > probs[bestIdx]) bestIdx = i
   }
-  const confidence = softmaxMax(data, 0, Math.min(classCount, numClasses))
+  const confidence = probs[bestIdx] ?? 0
+  // Kept so the result mapper can re-pick a material once it knows the deposit
+  const candidates = probs.map((prob, i) => ({ label: labels[i], prob }))
 
   // If the model predicted an "empty" class, the field is blank
   const label = labels[bestIdx] ?? '?'
   if (label.toLowerCase() === 'empty' || label.toLowerCase() === 'none') {
-    return { roiName: roi.name, text: '', confidence: 0 }
+    return { roiName: roi.name, text: '', confidence: 0, candidates }
   }
 
   // Below confidence threshold → treat as unrecognized
   const WORD_THRESHOLD = 0.5
   if (confidence < WORD_THRESHOLD) {
-    return { roiName: roi.name, text: '', confidence }
+    return { roiName: roi.name, text: '', confidence, candidates }
   }
 
   return {
     roiName: roi.name,
     text: label,
     confidence,
+    candidates,
   }
 }
 
@@ -126,15 +129,13 @@ async function recognizeCrnn(
   }
 }
 
-/** Compute softmax probability of the max element */
-function softmaxMax(data: Float32Array, offset: number, len: number): number {
+/** Softmax over the first `len` logits */
+function softmax(data: Float32Array, len: number): number[] {
   let maxVal = -Infinity
   for (let i = 0; i < len; i++) {
-    if (data[offset + i] > maxVal) maxVal = data[offset + i]
+    if (data[i] > maxVal) maxVal = data[i]
   }
-  let sumExp = 0
-  for (let i = 0; i < len; i++) {
-    sumExp += Math.exp(data[offset + i] - maxVal)
-  }
-  return 1 / sumExp // exp(0) / sumExp = 1/sumExp since we subtracted max
+  const exps = Array.from({ length: len }, (_, i) => Math.exp(data[i] - maxVal))
+  const sumExp = exps.reduce((a, b) => a + b, 0)
+  return exps.map(e => e / sumExp)
 }

@@ -91,6 +91,13 @@ export interface RoiResult {
   confidence: number
   /** Per-character/segment confidences for cnn mode (one entry per segment) */
   segmentConfidences?: number[]
+  /** word_cnn: every class with its softmax probability (set whenever the model ran) */
+  candidates?: WordCandidate[]
+}
+
+export interface WordCandidate {
+  label: string
+  prob: number
 }
 
 export interface AnchorMatch {
